@@ -55,9 +55,9 @@ async function suite(b,url,tag){
  await relog(p,url,'syseng','eng');
  ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' syseng يرى 19 فصلاً');
  ok(await p.$('#reset')!==null&&await p.$('#audit')!==null,tag+' syseng يرى التصفير وسجل التدقيق');
- ok((await p.textContent('body')).includes('ملاحظات الصيانة'),tag+' syseng يرى ملاحظات الصيانة');
+ ok((await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' syseng يرى ملاحظات الصيانة');
  await relog(p,url,'mgr','min');
- ok(await p.$('#reset')===null&&!(await p.textContent('body')).includes('ملاحظات الصيانة'),tag+' المدير لا يرى التصفير ولا ملاحظات الصيانة');
+ ok(await p.$('#reset')===null&&!(await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' المدير لا يرى التصفير ولا ملاحظات الصيانة');
  await relog(p,url,'dep0','admin48');
  ok(await p.$('#audit')===null&&await p.$('#reset')===null,tag+' الوكيل لا يرى أدوات المهندس');
  // معرّف مشترك قديم لم يعد مقبولاً
