@@ -89,6 +89,12 @@ header.hero>*{position:relative}header.hero>.emb{position:absolute}
 .sbar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#e3eaf0}.sbar i{display:block;height:12px}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--mut)}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:6px;vertical-align:-1px}
 
+.lg{max-width:860px;margin:48px auto;display:flex;flex-wrap:wrap;gap:24px;border-top:6px solid #14577a;padding:22px}
+.lg-info{flex:1 1 380px;display:flex;flex-direction:column;gap:12px}
+.lg-form{flex:1 1 280px;display:flex;flex-direction:column;gap:10px;background:#f4f8fb;border:1px solid var(--line);border-radius:12px;padding:16px}
+.lg-form{align-self:flex-start}.lg-form label{display:flex;flex-direction:column;gap:6px}
+.lg-p{margin:0;line-height:1.9;font-size:14.5px}.lg-h{font-weight:800;font-size:14px;color:#14577a;border-bottom:1px solid var(--line);padding-bottom:4px}
+.rl{display:flex;flex-direction:column;gap:4px;font-size:13.5px;line-height:1.7}.rt{align-self:flex-start;border-radius:999px;padding:2px 12px;font-weight:800;font-size:13px}
 /* ───── التقرير A4 ───── */
 .sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{position:relative;width:794px;height:1123px;overflow:hidden;background:#fff;font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;color:#16222d}
@@ -258,11 +264,17 @@ const Auth=(()=>{
  return{load,login,session,logout};
 })();
 function showLogin(msg){
- $('#app').innerHTML='<div class="card" style="max-width:420px;margin:60px auto;display:flex;flex-direction:column;gap:12px;border-top:6px solid #14577a"><div style="display:flex;align-items:center;gap:12px"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:84px;height:70px;object-fit:contain"><div><h1 style="font-size:19px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">العام الدراسي '+esc(DEMO.year)+'هـ · دخول الفريق</div></div></div>'+
-  '<form id="lf" style="display:flex;flex-direction:column;gap:10px"><label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
+ const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
+ $('#app').innerHTML='<div class="card lg"><div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
+  '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب القسم الأهلي (الابتدائي والمتوسط والثانوي) ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+
+  '<div class="lg-h">المستخدمون ومهامهم</div>'+
+  role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
+  role('وكيل شؤون الطلاب','يستلم التقارير المرسلة من مرحلته ويراجعها ويعتمدها، أو يعيدها للموجه.',['#fbecc8','#5c4306'])+
+  role('مدير المدرسة','يراجع ويعتمد نهائياً أو يعيد للمسودة بسبب، ويتابع سير العمل في كل المراحل.',['#d6e6f4','#123a5c'])+
+  '</div><form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
+  '<label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
   '<label style="font-weight:700">كلمة المرور<input id="lp" type="password" autocomplete="current-password" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
-  '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form>'+
-  '<div class="sub">قفل متصفح تجريبي: يُقرأ من access.txt. لا يحمي بيانات حقيقية.</div></div>';
+  '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form></div>';
  $('#lf').onsubmit=async e=>{e.preventDefault();const r=await Auth.login($('#lu').value.trim(),$('#lp').value);if(r.err){$('#lerr').textContent=r.err;return;}location.reload();};
  $('#lu').focus();
 }
@@ -352,9 +364,9 @@ function render(){
  const stu=curStudent();
  $('#app').innerHTML=
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
- "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي · "+(B.isMock?"نسخة تجريبية (بيانات افتراضية، محاكاة محلية)":"متصل بالشيت")+"</div>"+
+ "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
  "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
- "<div class=\"ctl\">"+(B.isMock?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
+ "<div class=\"ctl\">"+(B.isMock&&/[?&]dev=1/.test(location.search)?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  usersBarHtml()+dashHtml()+
  '<div class="cols">'+
@@ -370,7 +382,7 @@ function render(){
   actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
  '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
   '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
-  (B.isMock?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
+  (B.isMock&&S.user.role==='principal'?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');

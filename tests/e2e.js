@@ -50,7 +50,7 @@ async function suite(b,url,tag){
  ok((await p.textContent('#msg')).includes('سبب'),tag+' الإعادة للمسودة بلا سبب مرفوضة');
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
- await p.click('#audit').catch(()=>{});
+ 
  // معرّف مشترك قديم لم يعد مقبولاً
  await p.evaluate(()=>{sessionStorage.clear();localStorage.removeItem('dfa_try_v1');});await p.goto(url);await p.waitForSelector('#lf');
  await login(p,'admin','min');ok((await p.textContent('#lerr')).includes('غير صحيحة'),tag+' المعرّف المشترك admin لم يعد يعمل');
