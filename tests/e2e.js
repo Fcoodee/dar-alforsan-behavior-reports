@@ -1,6 +1,6 @@
 // اختبار المتصفح الشامل: node tests/e2e.js   (يتطلب playwright وChromium؛ CHROMIUM_PATH اختياري)
 const {chromium}=require('playwright');const path=require('path');const http=require('http');const fs=require('fs');
-const root=path.resolve(__dirname,'../web');
+const root=path.resolve(__dirname,'..');
 const out=[];const ok=(c,m)=>out.push((c?'نجح: ':'فشل: ')+m);
 function serve(){return new Promise(r=>{const s=http.createServer((q,res)=>{const f=path.join(root,decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/,'/index.html'));fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);return res.end();}res.writeHead(200,{'content-type':f.endsWith('.html')?'text/html; charset=utf-8':f.endsWith('.txt')?'text/plain; charset=utf-8':f.endsWith('.js')?'text/javascript; charset=utf-8':'image/png'});res.end(d);});}).listen(0,()=>r(s));});}
 async function login(p,u,pw){await p.fill('#lu',u);await p.fill('#lp',pw);await p.click('#lf button');await p.waitForTimeout(500);}

@@ -7,3 +7,5 @@ data/
 *.pdf
 .clasp.json
 .env
+shot*.png
+out.pdf

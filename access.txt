@@ -1,0 +1,9 @@
+# ملف الصلاحيات — تقرير الأداء السلوكي والأكاديمي (دار الفرسان)
+# الصيغة: المعرف,pbkdf2:التكرارات:الملح:البصمة,الدور,المرحلة,الاسم
+# يُولَّد بـ tools/make-access.js. لا تضع كلمات مرور صريحة هنا.
+# ⚠ قفل متصفح لا خادم: أي زائر يستطيع تنزيل هذا الملف. لا يصلح لحماية بيانات حقيقية.
+
+dar0,pbkdf2:150000:6adc5c275f3255e6:05f6a23bd8f990c0bacf923f5b5db6104d4c31fa17a50e5669a08acc95cd8cf5,counselor,primary,موجه المرحلة الابتدائية
+admin,pbkdf2:150000:9ffa3ea6bdf7c21f:eafc6e0d9007aa8e94ce2d6cbfd379ed3d9d8c78cfe4d9ba6298f496e772f3eb,deputy,primary,وكيل شؤون الطلاب — الابتدائي
+admin,pbkdf2:150000:16ccc15421c41ffa:7e68d3808dbe73e4ed0361ff6de69da5541eddfec796f8e78d6a01c57a4fe98a,deputy,middle+secondary,وكيل شؤون الطلاب — المتوسط والثانوي
+admin,pbkdf2:150000:870b21bfba4140cb:5dc6ae0189b4d6c508cd123573d2bfe4680e6a5ddfc88ec79957a52a34b400b6,principal,all,مدير المدرسة
