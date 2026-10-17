@@ -14,7 +14,7 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
 #app{padding:16px;display:flex;flex-direction:column;gap:16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-header.card{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+header.card{border-top:4px solid #6b4fb3;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
 h1{margin:0;font-size:21px;font-weight:800}
 .sub{color:var(--mut);font-size:13.5px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -36,8 +36,8 @@ h1{margin:0;font-size:21px;font-weight:800}
 .st small{color:#3d4e5c;font-size:12.5px}
 fieldset{margin:0;border-radius:8px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
 legend{font-weight:800;padding:0 6px;font-size:14px}
-.fs-s{border:1px solid #b9d3bf;background:#f6fbf7}.fs-s legend{color:var(--ok)}
-.fs-i{border:1px solid #e3cf9a;background:#fffaf0}.fs-i legend{color:var(--warn)}
+.fs-s{border:1px solid #cdbfe8;background:#f7f4fc}.fs-s legend{color:#3f2a73}
+.fs-i{border:1px solid #c6ccd2;background:#f5f6f7}.fs-i legend{color:#36404a}
 .fs-r{border:1px solid #b4cde3;background:#f4f9fd}.fs-r legend{color:var(--info)}
 .opts{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 label.o{min-height:36px;display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.5;padding:4px 2px}
@@ -55,6 +55,7 @@ dialog{border:1px solid var(--line);border-radius:10px;max-width:760px;width:92%
 table.au{border-collapse:collapse;width:100%;font-size:12.5px}table.au td,table.au th{border:1px solid var(--line);padding:4px 8px;text-align:right}
 
 /* ───── التقرير A4 ───── */
+.sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{position:relative;width:794px;height:1123px;overflow:hidden;background:#fff;font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;color:#16222d}
 .sheet .bg{position:absolute;left:0;top:0;width:794px;height:1123px}
 .sheet .wmbox{position:absolute;left:0;top:0;width:794px;height:1022px;overflow:hidden}
@@ -72,6 +73,7 @@ table.au{border-collapse:collapse;width:100%;font-size:12.5px}table.au td,table.
 .sheet .ft{text-align:center;font-size:14px;font-weight:800}
 #printArea{display:none}
 @media print{
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  body{background:#fff}#app{display:none}
  #printArea{display:block}
  .sheet{break-after:page;margin:0}
@@ -206,7 +208,7 @@ function sheetHtml(name,items){
  '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'ه</h2>'+
  '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
  '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
- '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
+ '<div class="box"><div class="gr"><div class="th" style="background:#e5dcf6;color:#3f2a73;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#e4e7ea;color:#36404a">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
  '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">التوصيات</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
  '<p>نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.</p>'+
  '<div class="ft">حفظكم الله ورعاكم، وكل عام وأنتم بخير</div></div></div>';

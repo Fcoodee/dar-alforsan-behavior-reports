@@ -95,8 +95,8 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 </div>
 
-<fieldset style="margin: 0; border: 1px solid #b9d3bf; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f6fbf7">
-<legend style="font-size: 14px; font-weight: 800; color: #1d4a2c; padding: 0 6px">النقاط الإيجابية ونقاط القوة ({{p.count}}/{{p.max}})</legend>
+<fieldset style="margin: 0; border: 1px solid #cdbfe8; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f7f4fc">
+<legend style="font-size: 14px; font-weight: 800; color: #3f2a73; padding: 0 6px">النقاط الإيجابية ونقاط القوة ({{p.count}}/{{p.max}})</legend>
 <div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
 <sc-for list="{{p.items}}" as="it" hint-placeholder-count="8">
 <label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
@@ -107,12 +107,12 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 <form onSubmit="{{ p.add }}" style="display: flex; gap: 8px">
 <input type="text" value="{{p.draft}}" onChange="{{ p.setDraft }}" aria-label="عبارة إضافية للنقاط الإيجابية" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
-<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #1d4a2c; background: #1d4a2c; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #3f2a73; background: #3f2a73; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
 </form>
 </fieldset>
 
-<fieldset style="margin: 0; border: 1px solid #e3cf9a; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #fffaf0">
-<legend style="font-size: 14px; font-weight: 800; color: #5c4306; padding: 0 6px">نقاط تحتاج إلى دعم وتحسين ({{i.count}}/{{i.max}})</legend>
+<fieldset style="margin: 0; border: 1px solid #c6ccd2; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f5f6f7">
+<legend style="font-size: 14px; font-weight: 800; color: #36404a; padding: 0 6px">نقاط تحتاج إلى دعم وتحسين ({{i.count}}/{{i.max}})</legend>
 <div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
 <sc-for list="{{i.items}}" as="it" hint-placeholder-count="8">
 <label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
@@ -123,7 +123,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 <form onSubmit="{{ i.add }}" style="display: flex; gap: 8px">
 <input type="text" value="{{i.draft}}" onChange="{{ i.setDraft }}" aria-label="عبارة إضافية لنقاط التحسين" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
-<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #5c4306; background: #5c4306; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #36404a; background: #36404a; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
 </form>
 </fieldset>
 
