@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقارير الأداء السلوكي</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.printOnly{display:none}
+button,input{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offset:2px}
+@media print{
+.screenOnly{display:none !important}
+.printOnly{display:block !important}
+.pg{break-after:page}
+@page{size:A4;margin:0}
+}
+</style>
+</helmet>
+<div class="screenOnly" dir="rtl" style="box-sizing: border-box; min-height: 1180px; background: #eef2f5; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; color: #16222d; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; background: #ffffff; border: 1px solid #d3dce3; border-radius: 10px; padding: 14px 20px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h1 style="margin: 0; font-size: 22px; font-weight: 800">تقارير الأداء السلوكي والأكاديمي</h1>
+<div style="font-size: 14px; color: #4a5b69">مدارس دار الفرسان الأهلية · العام الدراسي {{year}}ه · جميع المراحل</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 260px; flex: 0 1 340px">
+<div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700"><span>التقارير المكتملة</span><span>{{doneAll}} من {{total}}</span></div>
+<div style="height: 10px; border-radius: 5px; background: #dbe4ea; overflow: hidden"><div style="height: 10px; background: #1b6a96; width: {{pct}}%"></div></div>
+<div style="font-size: 12.5px; color: #4a5b69">يُعدّ التقرير مكتملاً عند اختيار نقطة قوة وملاحظة تحسين وتوصية على الأقل.</div>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+
+<!-- العمود الأول: الاختيار -->
+<section style="flex: 1 1 300px; max-width: 360px; min-width: 280px; background: #ffffff; border: 1px solid #d3dce3; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{stages}}" as="st" hint-placeholder-count="2">
+<button type="button" onClick="{{ st.pick }}" aria-pressed="{{ st.active }}" style="min-height: 44px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; border: 1px solid #1b6a96; background: {{st.bg}}; color: {{st.fg}}">{{st.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 14px; font-weight: 700">الفصل</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px">
+<sc-for list="{{classes}}" as="c" hint-placeholder-count="6">
+<button type="button" onClick="{{ c.pick }}" aria-pressed="{{ c.active }}" style="min-height: 48px; border-radius: 8px; cursor: pointer; border: 1px solid #9fb0bd; background: {{c.bg}}; color: {{c.fg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 2px 4px">
+<span style="font-size: 15px; font-weight: 800">{{c.label}}</span>
+<span style="font-size: 12px">{{c.progress}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="q" style="font-size: 14px; font-weight: 700">بحث عن طالب في جميع الفصول</label>
+<input id="q" type="search" value="{{q}}" onChange="{{ setQ }}" placeholder="اكتب جزءاً من الاسم" style="min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 15px; background: #ffffff; color: #16222d">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; font-weight: 700">{{listTitle}}</div>
+<div style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{list}}" as="s" hint-placeholder-count="10">
+<button type="button" onClick="{{ s.pick }}" aria-current="{{ s.active }}" style="min-height: 48px; box-sizing: border-box; border-radius: 8px; cursor: pointer; text-align: right; border: 1px solid {{s.border}}; background: {{s.bg}}; color: #16222d; padding: 6px 12px; display: flex; flex-direction: column; gap: 0">
+<span style="font-size: 14px; font-weight: 700; line-height: 1.4">{{s.name}}</span>
+<span style="font-size: 12.5px; color: #3d4e5c">{{s.sub}}</span>
+</button>
+</sc-for>
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}"><div style="font-size: 14px; color: #4a5b69; padding: 8px">لا توجد نتائج مطابقة.</div></sc-if>
+</div>
+</div>
+<details style="border-top: 1px solid #d3dce3; padding-top: 10px">
+<summary style="min-height: 32px; font-size: 14px; font-weight: 700; cursor: pointer">إعدادات التقرير</summary>
+<div style="display: flex; flex-direction: column; gap: 10px; padding-top: 8px">
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13.5px">العام الدراسي (هجري)
+<input type="text" value="{{year}}" onChange="{{ setYear }}" style="min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 15px">
+</label>
+</div>
+</details>
+</section>
+
+<!-- العمود الثاني: التحرير -->
+<section style="flex: 1 1 380px; max-width: 460px; min-width: 300px; background: #ffffff; border: 1px solid #d3dce3; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+<div style="display: flex; flex-direction: column">
+<div style="font-size: 13px; color: #4a5b69">الطالب · {{cur.cls}} · رقم {{cur.num}}</div>
+<h2 style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.4">{{cur.name}}</h2>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{ prev }}" style="min-height: 44px; min-width: 44px; border-radius: 8px; border: 1px solid #9fb0bd; background: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 12px; color: #16222d">السابق</button>
+<button type="button" onClick="{{ next }}" style="min-height: 44px; min-width: 44px; border-radius: 8px; border: 1px solid #1b6a96; background: #1b6a96; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 12px">التالي</button>
+</div>
+</div>
+
+<fieldset style="margin: 0; border: 1px solid #b9d3bf; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f6fbf7">
+<legend style="font-size: 14px; font-weight: 800; color: #1d4a2c; padding: 0 6px">النقاط الإيجابية ونقاط القوة ({{p.count}}/{{p.max}})</legend>
+<div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{p.items}}" as="it" hint-placeholder-count="8">
+<label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
+<input type="checkbox" checked="{{ it.checked }}" disabled="{{ it.disabled }}" onChange="{{ it.toggle }}" style="width: 18px; height: 18px; margin-top: 2px; flex: none">
+<span>{{it.text}}</span>
+</label>
+</sc-for>
+</div>
+<form onSubmit="{{ p.add }}" style="display: flex; gap: 8px">
+<input type="text" value="{{p.draft}}" onChange="{{ p.setDraft }}" aria-label="عبارة إضافية للنقاط الإيجابية" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #1d4a2c; background: #1d4a2c; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+</form>
+</fieldset>
+
+<fieldset style="margin: 0; border: 1px solid #e3cf9a; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #fffaf0">
+<legend style="font-size: 14px; font-weight: 800; color: #5c4306; padding: 0 6px">نقاط تحتاج إلى دعم وتحسين ({{i.count}}/{{i.max}})</legend>
+<div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{i.items}}" as="it" hint-placeholder-count="8">
+<label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
+<input type="checkbox" checked="{{ it.checked }}" disabled="{{ it.disabled }}" onChange="{{ it.toggle }}" style="width: 18px; height: 18px; margin-top: 2px; flex: none">
+<span>{{it.text}}</span>
+</label>
+</sc-for>
+</div>
+<form onSubmit="{{ i.add }}" style="display: flex; gap: 8px">
+<input type="text" value="{{i.draft}}" onChange="{{ i.setDraft }}" aria-label="عبارة إضافية لنقاط التحسين" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #5c4306; background: #5c4306; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+</form>
+</fieldset>
+
+<fieldset style="margin: 0; border: 1px solid #b4cde3; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f4f9fd">
+<legend style="font-size: 14px; font-weight: 800; color: #123a5c; padding: 0 6px">التوصيات ({{r.count}}/{{r.max}})</legend>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{r.items}}" as="it" hint-placeholder-count="3">
+<label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
+<input type="checkbox" checked="{{ it.checked }}" disabled="{{ it.disabled }}" onChange="{{ it.toggle }}" style="width: 18px; height: 18px; margin-top: 2px; flex: none">
+<span>{{it.text}}</span>
+</label>
+</sc-for>
+</div>
+<form onSubmit="{{ r.add }}" style="display: flex; gap: 8px">
+<input type="text" value="{{r.draft}}" onChange="{{ r.setDraft }}" aria-label="توصية إضافية" placeholder="توصية إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #123a5c; background: #123a5c; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+</form>
+</fieldset>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+<button type="button" onClick="{{ clearCur }}" style="min-height: 44px; border-radius: 8px; border: 1px solid #9fb0bd; background: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px; color: #16222d">مسح اختيارات هذا الطالب</button>
+<div style="font-size: 12.5px; color: #4a5b69">{{saveNote}}</div>
+</div>
+</section>
+
+<!-- العمود الثالث: المعاينة والطباعة -->
+<section style="flex: 999 1 640px; min-width: 300px; display: flex; flex-direction: column; gap: 12px; align-items: center">
+<div style="width: 100%; max-width: 640px; box-sizing: border-box; background: #ffffff; border: 1px solid #d3dce3; border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; font-weight: 700">طباعة / حفظ PDF</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{scopes}}" as="sc" hint-placeholder-count="3">
+<button type="button" onClick="{{ sc.pick }}" aria-pressed="{{ sc.active }}" style="min-height: 44px; border-radius: 8px; border: 1px solid #1b6a96; background: {{sc.bg}}; color: {{sc.fg}}; font-size: 13.5px; font-weight: 700; cursor: pointer; padding: 0 6px">{{sc.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<button type="button" onClick="{{ doPrint }}" style="min-height: 44px; border-radius: 8px; border: 1px solid #1b6a96; background: #1b6a96; color: #ffffff; font-size: 15px; font-weight: 800; cursor: pointer; padding: 0 20px">طباعة ({{printCount}})</button>
+<div role="status" style="font-size: 12.5px; color: #4a5b69; flex: 1 1 200px">{{printNote}}</div>
+</div>
+</div>
+<div style="width: 100%; overflow-x: auto; display: flex; justify-content: center">
+<div style="position: relative; flex: none; width: 620px; height: 876px; box-shadow: 0 2px 14px rgba(22, 34, 45, 0.25); background: #ffffff">
+<div style="position: absolute; top: 0; right: 0; width: 794px; height: 1123px; transform: scale(0.78); transform-origin: top right">
+<dc-import name="Report" d="{{ curReport }}" hint-size="794px,1123px"></dc-import>
+</div>
+</div>
+</div>
+</section>
+
+</div>
+</div>
+
+<div class="printOnly" dir="rtl">
+<sc-for list="{{printList}}" as="pr" hint-placeholder-count="1">
+<div class="pg" style="width: 794px; height: 1123px; overflow: hidden">
+<dc-import name="Report" d="{{ pr }}" hint-size="794px,1123px"></dc-import>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+const LS = 'qps_behavior_reports_v1';
+const DATA = {"1/أ":["طالب 1","طالب 2","طالب 3","طالب 4","طالب 5","طالب 6","طالب 7","طالب 8","طالب 9","طالب 10"],"2/أ":["طالب 11","طالب 12","طالب 13","طالب 14","طالب 15","طالب 16","طالب 17","طالب 18","طالب 19","طالب 20"],"3/أ":["طالب 21","طالب 22","طالب 23","طالب 24","طالب 25","طالب 26","طالب 27","طالب 28","طالب 29","طالب 30"],"3/ب":["طالب 31","طالب 32","طالب 33","طالب 34","طالب 35","طالب 36","طالب 37","طالب 38","طالب 39","طالب 40"],"4/أ":["طالب 41","طالب 42","طالب 43","طالب 44","طالب 45","طالب 46","طالب 47","طالب 48","طالب 49","طالب 50"],"4/ب":["طالب 51","طالب 52","طالب 53","طالب 54","طالب 55","طالب 56","طالب 57","طالب 58","طالب 59","طالب 60"],"4/ج":["طالب 61","طالب 62","طالب 63","طالب 64","طالب 65","طالب 66","طالب 67","طالب 68","طالب 69","طالب 70"],"5/أ":["طالب 71","طالب 72","طالب 73","طالب 74","طالب 75","طالب 76","طالب 77","طالب 78","طالب 79","طالب 80"],"5/ب":["طالب 81","طالب 82","طالب 83","طالب 84","طالب 85","طالب 86","طالب 87","طالب 88","طالب 89","طالب 90"],"6/أ":["طالب 91","طالب 92","طالب 93","طالب 94","طالب 95","طالب 96","طالب 97","طالب 98","طالب 99","طالب 100"],"6/ب":["طالب 101","طالب 102","طالب 103","طالب 104","طالب 105","طالب 106","طالب 107","طالب 108","طالب 109","طالب 110"],"1م/أ":["طالب 111","طالب 112","طالب 113","طالب 114","طالب 115","طالب 116","طالب 117","طالب 118","طالب 119","طالب 120"],"1م/ب":["طالب 121","طالب 122","طالب 123","طالب 124","طالب 125","طالب 126","طالب 127","طالب 128","طالب 129","طالب 130"],"2م/أ":["طالب 131","طالب 132","طالب 133","طالب 134","طالب 135","طالب 136","طالب 137","طالب 138","طالب 139","طالب 140"],"2م/ب":["طالب 141","طالب 142","طالب 143","طالب 144","طالب 145","طالب 146","طالب 147","طالب 148","طالب 149","طالب 150"],"3م/أ":["طالب 151","طالب 152","طالب 153","طالب 154","طالب 155","طالب 156","طالب 157","طالب 158","طالب 159","طالب 160"],"3م/ب":["طالب 161","طالب 162","طالب 163","طالب 164","طالب 165","طالب 166","طالب 167","طالب 168","طالب 169"]};
+const POS = ["يلتزم بتعليمات المعلم داخل الفصل.","يشارك بفاعلية أثناء الحصة الدراسية.","يحترم زملاءه ويتعامل بأدب وتعاون.","يحافظ على نظافة الفصل والممتلكات المدرسية.","ينضبط في الحضور ويلتزم بالوقت.","يتحمل المسؤولية وينجز المهام المطلوبة.","يُظهر روح التعاون والعمل الجماعي.","يبادر بتقديم المساعدة للآخرين.","يتحلى بالهدوء وحسن الاستماع أثناء الشرح.","يحرص على أداء الواجبات والمتابعة الدراسية.","يبادر بطرح الأسئلة بهدف الفهم والتعلم.","يحترم آداب الحوار والنقاش داخل الفصل.","يلتزم بالهدوء أثناء تنقل المعلمين والطلاب.","يحافظ على أدواته وكتبه المدرسية بشكل منظم.","يتفاعل بإيجابية مع الأنشطة والفعاليات المدرسية.","يتقبل التوجيهات والملاحظات بروح إيجابية.","يتحلى بالأمانة والصدق في تعاملاته اليومية.","يُظهر الثقة بالنفس عند المشاركة والتعبير عن الرأي.","يلتزم بالزي المدرسي والمظهر اللائق.","يتعاون مع معلميه وزملائه لإنجاح العمل الجماعي.","ينظم وقته بين الدراسة والأنشطة المختلفة.","يتحلى بالصبر وضبط النفس في المواقف المختلفة.","يشجع زملاءه ويحفزهم على النجاح.","يحافظ على النظام داخل الفصل والطابور.","يلتزم بآداب الحديث والاستئذان قبل الكلام.","يحرص على تطوير ذاته واكتساب مهارات جديدة.","يشارك بإيجابية في المناسبات والبرامج المدرسية.","يلتزم بتعليمات الأمن والسلامة داخل المدرسة.","يُظهر روح القيادة وتحمل المسؤولية عند الحاجة.","يحترم الأنظمة والتعليمات المدرسية ويلتزم بها.","يحضر أدواته وكتبه المدرسية بانتظام.","يهتم بترتيب مقعده والمحافظة على مكانه.","يبادر بحل المشكلات بأسلوب هادئ وإيجابي.","يستخدم عبارات الشكر والتقدير مع الآخرين.","يتحلى بروح التنافس الشريف بين زملائه.","يشارك في الأعمال التطوعية والأنشطة الهادفة.","يلتزم بالهدوء والانضباط أثناء الاختبارات.","يساعد زملاءه المتعثرين أكاديميًا أو سلوكيًا.","يُظهر الحماس والرغبة في التعلم والتطوير.","يحافظ على الممتلكات العامة داخل المدرسة."];
+const IMP = ["يحتاج إلى تعزيز التركيز أثناء الشرح.","يعمل على تحسين الالتزام بالتعليمات الصفية.","يطور مهارات الهدوء والانضباط داخل الفصل.","يحرص على تنظيم وقته وإنجاز المهام المطلوبة.","يسعى إلى زيادة مشاركته الصفية بصورة أكبر.","يعمل على تحسين مهارات الاستماع والإنصات.","يحرص على التقليل من الانشغال بالأحاديث الجانبية أثناء الحصة.","يطور مهاراته في احترام الدور وآداب الحوار.","يحتاج إلى تعزيز المحافظة على الأدوات والممتلكات المدرسية.","يعمل على التروي قبل التصرف وإبداء ردود الأفعال.","يسعى إلى رفع مستوى التركيز والمتابعة أثناء الدرس.","يحتاج إلى تعزيز مهارات ضبط النفس داخل الفصل.","يطور قدرته على الالتزام بالهدوء أثناء الحصة.","يحرص على إنجاز الواجبات والمهام في الوقت المحدد.","يعمل على تحسين مستوى التفاعل الإيجابي مع المعلم والزملاء.","يسعى إلى تعزيز ثقته بالمشاركة والإجابة داخل الفصل.","يحتاج إلى تنمية مهارات التنظيم والترتيب.","يعمل على تحسين استثماره لوقت الحصة بشكل أفضل.","يحرص على زيادة اهتمامه بمتابعة التعليمات بدقة.","يسعى إلى تطوير مهارات التواصل بأسلوب أكثر هدوءًا.","يحتاج إلى تعزيز الالتزام بالنظام الصفي.","يعمل على تحسين مهارات التعاون أثناء الأنشطة الجماعية.","يحرص على تنمية روح المسؤولية تجاه واجباته الدراسية.","يسعى إلى تطوير مهارات التركيز أثناء أداء المهام.","يحتاج إلى تعزيز مهارات الحوار الهادئ مع الزملاء.","يعمل على تحسين مستوى الانتباه وتقليل التشتت.","يحرص على إظهار مزيد من الانضباط أثناء التنقل داخل الفصل.","يسعى إلى تطوير مهاراته في الاستئذان قبل التحدث.","يحتاج إلى تعزيز الاهتمام بترتيب أدواته والمحافظة عليها.","يعمل على تنمية مهارات الالتزام بالتوجيهات الصفية بشكل مستمر.","كثرة الحركة داخل الفصل أثناء الحصة.","التحدث المتكرر دون استئذان.","ضعف الالتزام بالتعليمات الصفية.","التأخر في إنجاز الواجبات والمهام.","تشتت الانتباه أثناء الشرح.","ضعف المشاركة الصفية.","الانشغال عن الدرس بالحديث مع الزملاء.","عدم المحافظة على الأدوات والممتلكات.","التسرع في التصرفات وردود الأفعال.","الحاجة إلى تعزيز مهارات احترام الدور وآداب الحوار."];
+const REC = ["تنمية المهارات الشخصية والاجتماعية بالمشاركة في الأنشطة التطوعية والبرامج الهادفة.","استثمار الإجازة الصيفية في تنمية مهارات القراءة والتركيز.","تنمية مهارات التواصل والحوار الإيجابي"];
+const MAX = { p: 4, i: 4, r: 3 };
+const ALL = Object.keys(DATA);
+const TOTAL = ALL.reduce((n, c) => n + DATA[c].length, 0);
+const SCALE_NORM = (s) => (s || '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+
+class Component extends DCLogic {
+  state = { stage: 'p', cls: '1/أ', idx: 0, q: '', sel: {}, year: '1447', drafts: { p: '', i: '', r: '' }, scope: 'student', saved: null, msg: '' };
+
+  componentDidMount() {
+    try {
+      const raw = window.localStorage.getItem(LS);
+      if (raw) {
+        const o = JSON.parse(raw);
+        this.setState({ sel: o.sel || {}, year: o.year || '1447', saved: true });
+      }
+    } catch (e) { /* التخزين غير متاح: يعمل التطبيق دون حفظ */ }
+  }
+
+  key(c, n) { return c + '|' + n; }
+  get(k) { return this.state.sel[k] || { p: [], i: [], r: [] }; }
+  persist(over) {
+    const o = Object.assign({ sel: this.state.sel, year: this.state.year }, over);
+    try { window.localStorage.setItem(LS, JSON.stringify(o)); if (this.state.saved !== true) this.setState({ saved: true }); }
+    catch (e) { if (this.state.saved !== false) this.setState({ saved: false }); }
+  }
+  setSec(k, sec, arr) {
+    const sel = Object.assign({}, this.state.sel, { [k]: Object.assign({}, this.get(k), { [sec]: arr }) });
+    this.setState({ sel });
+    this.persist({ sel });
+  }
+  isDone(c, n) { const v = this.state.sel[this.key(c, n)]; return !!(v && v.p.length && v.i.length && v.r.length); }
+  isStarted(c, n) { const v = this.state.sel[this.key(c, n)]; return !!(v && (v.p.length || v.i.length || v.r.length)); }
+  goTo(c, i) { this.setState({ cls: c, idx: i, stage: c.indexOf('م') >= 0 ? 'm' : 'p', drafts: { p: '', i: '', r: '' } }); }
+  dOf(c, n) {
+    const v = this.get(this.key(c, n));
+    return { name: n, year: this.state.year, pos: v.p, imp: v.i, rec: v.r };
+  }
+  section(k, sec, lib) {
+    const cur = this.get(k)[sec], max = MAX[sec];
+    const extra = cur.filter((t) => lib.indexOf(t) < 0);
+    const items = extra.concat(lib).map((t) => {
+      const checked = cur.indexOf(t) >= 0;
+      const disabled = !checked && cur.length >= max;
+      return {
+        text: t, checked, disabled, opacity: disabled ? 0.5 : 1,
+        toggle: () => {
+          const now = this.get(k)[sec];
+          if (now.indexOf(t) >= 0) this.setSec(k, sec, now.filter((x) => x !== t));
+          else if (now.length < max) this.setSec(k, sec, now.concat([t]));
+        }
+      };
+    });
+    return {
+      items, count: cur.length, max, draft: this.state.drafts[sec],
+      setDraft: (e) => this.setState({ drafts: Object.assign({}, this.state.drafts, { [sec]: e.target.value }) }),
+      add: (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const t = (this.state.drafts[sec] || '').trim();
+        const now = this.get(k)[sec];
+        this.setState({ drafts: Object.assign({}, this.state.drafts, { [sec]: '' }) });
+        if (t && now.indexOf(t) < 0 && now.length < max) this.setSec(k, sec, now.concat([t]));
+      }
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const inStage = (c) => (st.stage === 'm') === (c.indexOf('م') >= 0);
+    const stageClasses = ALL.filter(inStage);
+    if (!inStage(st.cls)) { /* حماية: الفصل الحالي يتبع المرحلة المختارة */ }
+    const names = DATA[st.cls] || [];
+    const idx = Math.min(st.idx, names.length - 1);
+    const curName = names[idx];
+    const k = this.key(st.cls, curName);
+
+    let doneAll = 0;
+    ALL.forEach((c) => DATA[c].forEach((n) => { if (this.isDone(c, n)) doneAll++; }));
+
+    const stages = [{ id: 'p', label: 'المرحلة الابتدائية' }, { id: 'm', label: 'المرحلة المتوسطة' }].map((s) => {
+      const active = st.stage === s.id;
+      return { label: s.label, active, bg: active ? '#1b6a96' : '#ffffff', fg: active ? '#ffffff' : '#1b6a96',
+        pick: () => { const first = ALL.filter((c) => (s.id === 'm') === (c.indexOf('م') >= 0))[0]; this.goTo(first, 0); this.setState({ q: '' }); } };
+    });
+    const classes = stageClasses.map((c) => {
+      const active = c === st.cls;
+      const d = DATA[c].filter((n) => this.isDone(c, n)).length;
+      return { label: c, active, progress: d + '/' + DATA[c].length, bg: active ? '#1b6a96' : '#ffffff', fg: active ? '#ffffff' : '#16222d',
+        pick: () => { this.goTo(c, 0); this.setState({ q: '' }); } };
+    });
+
+    const q = SCALE_NORM(st.q);
+    let list;
+    if (q) {
+      list = [];
+      ALL.forEach((c) => DATA[c].forEach((n, i) => { if (SCALE_NORM(n).indexOf(q) >= 0 && list.length < 40) list.push({ c, n, i }); }));
+    } else {
+      list = names.map((n, i) => ({ c: st.cls, n, i }));
+    }
+    const listVals = list.map((o) => {
+      const active = o.c === st.cls && o.i === idx;
+      const status = this.isDone(o.c, o.n) ? 'مكتمل' : (this.isStarted(o.c, o.n) ? 'قيد الإعداد' : 'لم يبدأ');
+      return { name: (o.i + 1) + '. ' + o.n, sub: (q ? o.c + ' · ' : '') + status, active,
+        bg: active ? '#d6e6f4' : '#ffffff', border: active ? '#1b6a96' : '#c3cfd8',
+        pick: () => { this.goTo(o.c, o.i); this.setState({ q: '' }); } };
+    });
+
+    const curReport = this.dOf(st.cls, curName);
+    let printList;
+    if (st.scope === 'class') printList = names.map((n) => this.dOf(st.cls, n));
+    else if (st.scope === 'all') { printList = []; ALL.forEach((c) => DATA[c].forEach((n) => printList.push(this.dOf(c, n)))); }
+    else printList = [curReport];
+    const scopes = [{ id: 'student', label: 'الطالب الحالي' }, { id: 'class', label: 'الفصل ' + st.cls }, { id: 'all', label: 'جميع الطلاب' }].map((s) => {
+      const active = st.scope === s.id;
+      return { label: s.label, active, bg: active ? '#1b6a96' : '#ffffff', fg: active ? '#ffffff' : '#1b6a96', pick: () => this.setState({ scope: s.id, msg: '' }) };
+    });
+
+    const goStep = (delta) => {
+      const flat = []; ALL.forEach((c) => DATA[c].forEach((n, i) => flat.push([c, i])));
+      const at = flat.findIndex((f) => f[0] === st.cls && f[1] === idx);
+      const to = flat[(at + delta + flat.length) % flat.length];
+      this.goTo(to[0], to[1]);
+    };
+
+    let saveNote = '';
+    if (st.saved === true) saveNote = 'يُحفظ تلقائياً على هذا المتصفح.';
+    else if (st.saved === false) saveNote = 'تنبيه: الحفظ التلقائي غير متاح هنا، ولن تبقى الاختيارات بعد إغلاق الصفحة.';
+
+    return {
+      year: st.year, total: TOTAL, doneAll, pct: Math.round((doneAll / TOTAL) * 100),
+      stages, classes, q: st.q, setQ: (e) => this.setState({ q: e.target.value }),
+      list: listVals, noResults: listVals.length === 0, listTitle: q ? 'نتائج البحث' : 'طلاب الفصل ' + st.cls,
+      setYear: (e) => { const y = e.target.value; this.setState({ year: y }); this.persist({ year: y }); },
+      cur: { name: curName, cls: st.cls, num: idx + 1 },
+      prev: () => goStep(-1), next: () => goStep(1),
+      p: this.section(k, 'p', POS), i: this.section(k, 'i', IMP), r: this.section(k, 'r', REC),
+      clearCur: () => { const sel = Object.assign({}, st.sel); delete sel[k]; this.setState({ sel }); this.persist({ sel }); },
+      saveNote, scopes, printCount: printList.length, curReport, printList,
+      printNote: st.msg || (st.scope === 'all' ? 'يُجهَّز تقرير لكل طالب (' + TOTAL + ' صفحة A4)، وقد يستغرق التحميل لحظات.' : 'يُطبع كل تقرير في صفحة A4 واحدة.'),
+      doPrint: () => {
+        try { window.print(); }
+        catch (e) { this.setState({ msg: 'الطباعة غير متاحة داخل هذا العرض. افتح اللوحة في نافذة كاملة أو صدّر قالب التقرير PDF من اللوحة.' }); }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

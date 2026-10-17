@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقرير الأداء</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div dir="rtl" style="position: relative; width: 794px; height: 1123px; overflow: hidden; background: #ffffff; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; color: #16222d">
+<img src="/_blob/b6c50918aa26580744f9a4bd29dd4485" alt="" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 794px; height: 1123px">
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 794px; height: 1022px; overflow: hidden"><img src="/_blob/99912ccf9ef24bb1b4e121535f4352b4" alt="" style="position: absolute; left: 57px; top: 390px; width: 680px; height: 381px; opacity: 0.18"></div>
+<div style="position: absolute; left: 0; right: 0; top: 150px; height: 860px; box-sizing: border-box; padding: 0 64px; display: flex; flex-direction: column; gap: 10px">
+<h1 style="margin: 0; text-align: center; font-size: 24px; font-weight: 800; line-height: 1.3">الأداء السلوكي والأكاديمي للعام الدراسي {{year}}ه</h1>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 16px; font-weight: 800; line-height: 1.5">شريكنا ولي أمر الطالب/ {{name}}</div>
+<div style="font-size: 15px; font-weight: 700; line-height: 1.5">السلام عليكم ورحمة الله وبركاته،،،</div>
+</div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.7; text-align: justify">في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>
+<div style="border: 1px solid #9fb0bd; border-radius: 6px; overflow: hidden">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))">
+<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #dcecdc; color: #1d4a2c; border-left: 1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div>
+<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #fbecc8; color: #5c4306">نقاط تحتاج إلى دعم وتحسين</div>
+</div>
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid #9fb0bd">
+<div style="min-height: 32px; box-sizing: border-box; padding: 5px 10px; font-size: 12.5px; line-height: 1.5; display: flex; align-items: center; border-left: 1px solid #9fb0bd">{{row.p}}</div>
+<div style="min-height: 32px; box-sizing: border-box; padding: 5px 10px; font-size: 12.5px; line-height: 1.5; display: flex; align-items: center">{{row.i}}</div>
+</div>
+</sc-for>
+</div>
+<div style="border: 1px solid #9fb0bd; border-radius: 6px; overflow: hidden">
+<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #d6e6f4; color: #123a5c">التوصيات</div>
+<sc-for list="{{recs}}" as="rec" hint-placeholder-count="3">
+<div style="min-height: 32px; box-sizing: border-box; padding: 5px 12px; font-size: 12.5px; line-height: 1.5; display: flex; align-items: center; border-top: 1px solid #9fb0bd">{{rec}}</div>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.7; text-align: justify">نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.</p>
+<div style="text-align: center; font-size: 14px; font-weight: 800; line-height: 1.5">حفظكم الله ورعاكم، وكل عام وأنتم بخير</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"d":{"editor":null},"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const d = this.props.d || {
+      name: '[اسم الطالب]', year: '1447',
+      pos: ['يشارك بفاعلية أثناء الحصة الدراسية.', 'يتحلى بالهدوء وحسن الاستماع أثناء الشرح.', 'يتحلى بالأمانة والصدق في تعاملاته اليومية.', 'يحافظ على النظام داخل الفصل والطابور.'],
+      imp: ['يعمل على تحسين مهارات الاستماع والإنصات.', 'يحرص على تنظيم وقته وإنجاز المهام المطلوبة.'],
+      rec: ['تنمية المهارات الشخصية والاجتماعية بالمشاركة في الأنشطة التطوعية والبرامج الهادفة.', 'استثمار الإجازة الصيفية في تنمية مهارات القراءة والتركيز.', 'تنمية مهارات التواصل والحوار الإيجابي']
+    };
+    const pos = d.pos || [], imp = d.imp || [];
+    const n = Math.max(pos.length, imp.length, 1);
+    const rows = [];
+    for (let k = 0; k < n; k++) rows.push({ p: pos[k] || '', i: imp[k] || '' });
+    return { name: d.name, year: d.year, rows, recs: d.rec || [] };
+  }
+}
+</script>
+</body>
+</html>

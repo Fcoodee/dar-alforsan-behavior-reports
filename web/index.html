@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تقارير الأداء السلوكي والأكاديمي — دار الفرسان (نسخة تجريبية)</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#16222d;--mut:#4a5b69;--line:#d3dce3;--bg:#eef2f5;--pri:#1b6a96;--ok:#1d4a2c;--warn:#5c4306;--info:#123a5c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;font-size:15px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+#app{padding:16px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+header.card{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:21px;font-weight:800}
+.sub{color:var(--mut);font-size:13.5px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cols{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.c1{flex:1 1 300px;max-width:360px;min-width:270px;display:flex;flex-direction:column;gap:12px}
+.c2{flex:1 1 380px;max-width:470px;min-width:300px;display:flex;flex-direction:column;gap:12px}
+.c3{flex:999 1 640px;min-width:300px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.btn{min-height:44px;padding:0 14px;border-radius:8px;border:1px solid #9fb0bd;background:#fff;font-weight:700}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.sel{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.chip{min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;border:1px solid #9fb0bd;background:#fff;padding:2px 4px}
+.chip b{font-size:15px}.chip small{font-size:12px}
+.chip.sel{background:var(--pri);color:#fff;border-color:var(--pri)}
+.list{max-height:420px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.st{min-height:48px;text-align:right;border-radius:8px;border:1px solid #c3cfd8;background:#fff;padding:6px 12px;display:flex;flex-direction:column}
+.st.sel{background:#d6e6f4;border-color:var(--pri)}
+.st small{color:#3d4e5c;font-size:12.5px}
+fieldset{margin:0;border-radius:8px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
+legend{font-weight:800;padding:0 6px;font-size:14px}
+.fs-s{border:1px solid #b9d3bf;background:#f6fbf7}.fs-s legend{color:var(--ok)}
+.fs-i{border:1px solid #e3cf9a;background:#fffaf0}.fs-i legend{color:var(--warn)}
+.fs-r{border:1px solid #b4cde3;background:#f4f9fd}.fs-r legend{color:var(--info)}
+.opts{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+label.o{min-height:36px;display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.5;padding:4px 2px}
+label.o input{width:18px;height:18px;margin-top:2px;flex:none}
+.add{display:flex;gap:8px}.add input{flex:1;min-width:0;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12.5px;font-weight:700;background:#e3eaf0}
+.b-DRAFT{background:#e3eaf0}.b-SUBMITTED{background:#fbecc8;color:var(--warn)}.b-REVIEWED{background:#d6e6f4;color:var(--info)}.b-APPROVED{background:#dcecdc;color:var(--ok)}.b-PUBLISHED{background:#1d4a2c;color:#fff}
+.bar{height:10px;border-radius:5px;background:#dbe4ea;overflow:hidden}.bar i{display:block;height:10px;background:var(--pri)}
+#msg{min-height:22px;font-size:13.5px;font-weight:700}
+#msg.err{color:#a02020}#msg.ok{color:var(--ok)}
+.wrap{width:100%;overflow-x:auto;display:flex;justify-content:center}
+.scaled{position:relative;flex:none;width:620px;height:876px;box-shadow:0 2px 14px rgba(22,34,45,.25);background:#fff}
+.scaled .sheet{position:absolute;top:0;right:0;transform:scale(.78);transform-origin:top right}
+dialog{border:1px solid var(--line);border-radius:10px;max-width:760px;width:92%}
+table.au{border-collapse:collapse;width:100%;font-size:12.5px}table.au td,table.au th{border:1px solid var(--line);padding:4px 8px;text-align:right}
+
+/* ───── التقرير A4 ───── */
+.sheet{position:relative;width:794px;height:1123px;overflow:hidden;background:#fff;font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;color:#16222d}
+.sheet .bg{position:absolute;left:0;top:0;width:794px;height:1123px}
+.sheet .wmbox{position:absolute;left:0;top:0;width:794px;height:1022px;overflow:hidden}
+.sheet .wmbox img{position:absolute;left:57px;top:390px;width:680px;height:381px;opacity:.18}
+.sheet .body{position:absolute;left:0;right:0;top:150px;height:860px;padding:0 64px;display:flex;flex-direction:column;gap:10px}
+.sheet h2{margin:0;text-align:center;font-size:24px;font-weight:800;line-height:1.3}
+.sheet p{margin:0;font-size:12.5px;line-height:1.7;text-align:justify}
+.sheet .g1{font-size:16px;font-weight:800}.sheet .g2{font-size:15px;font-weight:700}
+.sheet .box{border:1px solid #9fb0bd;border-radius:6px;overflow:hidden}
+.sheet .gr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.sheet .th{padding:6px 10px;text-align:center;font-size:14px;font-weight:800}
+.sheet .td{min-height:32px;padding:5px 10px;font-size:12.5px;line-height:1.5;display:flex;align-items:center;border-top:1px solid #9fb0bd}
+.sheet .td+.td{border-right:1px solid #9fb0bd}
+.sheet .tr1{padding:5px 12px;min-height:32px;font-size:12.5px;line-height:1.5;display:flex;align-items:center;border-top:1px solid #9fb0bd}
+.sheet .ft{text-align:center;font-size:14px;font-weight:800}
+#printArea{display:none}
+@media print{
+ body{background:#fff}#app{display:none}
+ #printArea{display:block}
+ .sheet{break-after:page;margin:0}
+ @page{size:A4;margin:0}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="printArea" aria-hidden="true"></div>
+<dialog id="auditDlg"><div id="auditBody"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
+<script src="data.js"></script>
+<script>
+'use strict';
+/* ═════════ قواعد العمل (مطابقة لـ apps-script/Code.gs) ═════════ */
+const MAX={strength:4,improve:4,recommend:3}, MAXC=120;
+const CATS=['strength','improve','recommend'];
+const STAGE_AR={primary:'الابتدائي',middle:'المتوسط',secondary:'الثانوي',all:'كل المراحل'};
+const ROLE_AR={counselor:'موجه طلابي',deputy:'وكيل شؤون الطلاب',principal:'مدير المدرسة',admin:'مدير النظام'};
+const ST_AR={NONE:'لم يبدأ',DRAFT:'مسودة',SUBMITTED:'مُسلَّم',REVIEWED:'مُراجَع',APPROVED:'مُعتمَد',PUBLISHED:'منشور'};
+const TRANS={
+ DRAFT:{SUBMITTED:['counselor','deputy','admin']},
+ SUBMITTED:{REVIEWED:['deputy','admin'],DRAFT:['deputy','principal','admin']},
+ REVIEWED:{APPROVED:['principal','admin'],DRAFT:['deputy','principal','admin']},
+ APPROVED:{PUBLISHED:['principal','admin'],DRAFT:['principal','admin']},
+ PUBLISHED:{DRAFT:['principal','admin']}};
+const canSee=(c,stage)=>['principal','admin'].includes(c.role)||c.stage==='all'||c.stage===stage;
+
+/* ═════════ واجهة الخلفية: محاكاة محلية، أو Apps Script إن وُجد ═════════ */
+const Mock=(()=>{
+ const KEY='dfa_demo_v1';
+ let db; try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){} db=db||{reports:{},audit:[]};
+ let ctx=null;
+ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+ const log=(a,t,d)=>{db.audit.push({ts:new Date().toISOString(),email:ctx.email,action:a,target:t,detail:d||''});save();};
+ const stu=id=>{const s=DEMO.students.find(x=>x.id===id);if(!s||!canSee(ctx,s.stage))throw new Error('الطالب غير متاح.');return s;};
+ const wait=v=>new Promise(r=>setTimeout(()=>r(JSON.parse(JSON.stringify(v))),60));
+ const fail=e=>Promise.resolve().then(()=>{throw e});
+ return{
+  isMock:true,
+  users:()=>DEMO.staff,
+  as(email){ctx=DEMO.staff.find(s=>s.email===email);return wait(ctx);},
+  me:()=>wait(ctx),
+  students(){return wait(DEMO.students.filter(s=>canSee(ctx,s.stage)).map(s=>({...s,status:(db.reports[s.id]||{}).status||'NONE'})));},
+  library:()=>wait(DEMO.library),
+  getReport(id){try{stu(id);}catch(e){return fail(e)}const r=db.reports[id];return wait(r?{id:'R-'+id,status:r.status,items:r.items,pdfUrl:r.pdfUrl||''}:{status:'NONE',items:[]});},
+  saveReport(id,items){try{
+   stu(id);const r=db.reports[id];
+   if(r&&r.status!=='DRAFT')throw new Error('التقرير مقفل بحالته الحالية.');
+   if(!['counselor','deputy','admin'].includes(ctx.role))throw new Error('لا صلاحية للتعديل.');
+   const lib=new Set(DEMO.library.map(l=>l.text)),n={strength:0,improve:0,recommend:0};
+   const clean=items.map((it,i)=>{const t=String(it.text||'').trim();if(!t)throw new Error('عبارة فارغة.');if(!CATS.includes(it.category))throw new Error('فئة غير صالحة.');
+    const source=lib.has(t)?'library':'custom';if(source==='custom'&&t.length>MAXC)throw new Error('العبارة المخصصة أطول من '+MAXC+' حرفاً.');
+    if(++n[it.category]>MAX[it.category])throw new Error('تجاوز الحد الأقصى للفئة.');return{category:it.category,text:t,source};});
+   db.reports[id]={status:'DRAFT',items:clean,by:ctx.email,updated:new Date().toISOString()};log('SAVE','R-'+id,clean.length+' بنود');
+   return wait({id:'R-'+id,status:'DRAFT'});}catch(e){return fail(e)}},
+  transition(id,to,reason){try{
+   stu(id);const r=db.reports[id];if(!r)throw new Error('لا يوجد تقرير.');
+   const ok=(TRANS[r.status]||{})[to];if(!ok||!ok.includes(ctx.role))throw new Error('هذه النقلة غير مسموحة لدورك.');
+   if(to==='DRAFT'&&!String(reason||'').trim())throw new Error('سبب الإعادة مطلوب.');
+   if(to==='SUBMITTED'){const g={strength:0,improve:0,recommend:0};r.items.forEach(i=>g[i.category]++);if(!g.strength||!g.improve||!g.recommend)throw new Error('أكمل نقطة قوة وتحسين وتوصية على الأقل.');}
+   const from=r.status;r.status=to;if(to==='REVIEWED')r.reviewedBy=ctx.email;if(to==='APPROVED')r.approvedBy=ctx.email;
+   if(to==='PUBLISHED')r.pdfUrl='https://drive.example.test/demo/'+id+'.pdf (رابط تجريبي، محاكاة)';
+   r.updated=new Date().toISOString();log('TRANSITION','R-'+id,from+' -> '+to+(reason?' | '+reason:''));
+   return wait({status:to,pdfUrl:r.pdfUrl||''});}catch(e){return fail(e)}},
+  audit:()=>wait(db.audit.slice(-60).reverse()),
+  reset(){db={reports:{},audit:[]};save();}
+ };
+})();
+const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي
+ const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error(e.message||e)))[fn](...a));
+ return{isMock:false,users:()=>[],as:()=>call('api_me'),me:()=>call('api_me'),students:()=>call('api_students'),library:()=>call('api_library'),
+  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:async()=>[],reset(){}};
+})();
+const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
+
+/* ═════════ الحالة والواجهة ═════════ */
+const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const L=c=>'<bdi dir="ltr">'+esc(c)+'</bdi>';
+const norm=s=>s.replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
+const classes=()=>[...new Set(S.students.map(s=>s.class))];
+const curStudent=()=>S.students.find(s=>s.id===S.cur);
+function say(t,k){S.msg=t;S.msgKind=k||'';const m=$('#msg');if(m){m.textContent=t;m.className=k||'';}}
+
+async function boot(){
+ if(B.isMock){await B.as(B.users()[0].email);}
+ await loadAll();
+ S.cls=classes()[0];
+ render();
+ if(S.cls){const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
+}
+async function loadAll(){S.user=await B.me();S.students=await B.students();S.lib=await B.library();}
+async function switchUser(email){await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
+async function pick(id){
+ S.cur=id;S.msg='';S.reason='';
+ try{const r=await B.getReport(id);S.items=r.items||[];S.status=r.status||'NONE';S.pdfUrl=r.pdfUrl||'';}catch(e){S.items=[];S.status='NONE';say(e.message,'err');}
+ S.cls=curStudent().class;render();
+}
+const has=(cat,t)=>S.items.some(i=>i.category===cat&&i.text===t);
+const editable=()=>['NONE','DRAFT'].includes(S.status)&&['counselor','deputy','admin'].includes(S.user.role);
+async function persist(){
+ try{const r=await B.saveReport(S.cur,S.items);S.status=r.status;const s=curStudent();s.status=r.status;say('تم الحفظ كمسودة.','ok');}
+ catch(e){say(e.message,'err');await pick(S.cur);return;}
+ render();
+}
+async function toggle(cat,t){
+ if(!editable())return;
+ if(has(cat,t))S.items=S.items.filter(i=>!(i.category===cat&&i.text===t));
+ else{if(S.items.filter(i=>i.category===cat).length>=MAX[cat])return;S.items=S.items.concat([{category:cat,text:t,source:'library'}]);}
+ await persist();
+}
+async function addCustom(cat){
+ const t=(S.drafts[cat]||'').trim();if(!t||!editable())return;
+ if(has(cat,t)||S.items.filter(i=>i.category===cat).length>=MAX[cat]){say('لا يمكن إضافة المزيد في هذا القسم.','err');return;}
+ S.items=S.items.concat([{category:cat,text:t,source:'custom'}]);S.drafts[cat]='';await persist();
+}
+async function go(to){
+ const needReason=to==='DRAFT';
+ try{const r=await B.transition(S.cur,to,needReason?S.reason:'');S.status=r.status;S.pdfUrl=r.pdfUrl||'';curStudent().status=r.status;S.reason='';say('تمت النقلة إلى «'+ST_AR[r.status]+'».','ok');}
+ catch(e){say(e.message,'err');}
+ render();
+}
+
+/* التقرير */
+function sheetHtml(name,items){
+ const g=c=>items.filter(i=>i.category===c).map(i=>i.text);
+ const a=g('strength'),b=g('improve'),r=g('recommend'),n=Math.max(a.length,b.length,1);
+ let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
+ return '<div class="sheet" dir="rtl"><img class="bg" src="assets/bg.png" alt=""><div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
+ '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'ه</h2>'+
+ '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
+ '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
+ '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
+ '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">التوصيات</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
+ '<p>نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.</p>'+
+ '<div class="ft">حفظكم الله ورعاكم، وكل عام وأنتم بخير</div></div></div>';
+}
+
+/* الرسم */
+function optsHtml(cat){
+ const lib=S.lib.filter(l=>l.category===cat).map(l=>l.text);
+ const extra=S.items.filter(i=>i.category===cat&&!lib.includes(i.text)).map(i=>i.text);
+ const cnt=S.items.filter(i=>i.category===cat).length,ed=editable();
+ return extra.concat(lib).map(t=>{const ch=has(cat,t),dis=!ed||(!ch&&cnt>=MAX[cat]);
+  return '<label class="o"'+(dis&&!ch?' style="opacity:.5"':'')+'><input type="checkbox" data-cat="'+cat+'" data-t="'+esc(t)+'"'+(ch?' checked':'')+(dis?' disabled':'')+'><span>'+esc(t)+'</span></label>';}).join('');
+}
+function actionsHtml(){
+ const out=[],u=S.user.role,st=S.status;
+ const t=TRANS[st]||{};
+ const lbl={SUBMITTED:'تسليم للمراجعة',REVIEWED:'اعتماد المراجعة',APPROVED:'اعتماد المدير',PUBLISHED:'نشر وتوليد PDF',DRAFT:'إعادة للمسودة'};
+ Object.keys(t).forEach(to=>{if(t[to].includes(u))out.push('<button class="btn'+(to==='DRAFT'?'':' pri')+'" data-go="'+to+'">'+lbl[to]+'</button>');});
+ let reason='';
+ if((t.DRAFT||[]).includes(u))reason='<input id="reason" placeholder="سبب الإعادة (مطلوب عند الإعادة)" value="'+esc(S.reason)+'" aria-label="سبب الإعادة" style="flex:1 1 200px;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px">';
+ return '<div class="row">'+out.join('')+reason+'</div>';
+}
+function render(){
+ const u=S.user,vis=S.students,done=vis.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length,pct=vis.length?Math.round(done/vis.length*100):0;
+ const q=norm(S.q);
+ const list=(q?vis.filter(s=>norm(s.name).includes(q)):vis.filter(s=>s.class===S.cls)).slice(0,60);
+ const users=B.isMock?B.users():[];
+ const stu=curStudent();
+ $('#app').innerHTML=
+ '<header class="card"><div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+' · '+(B.isMock?'نسخة تجريبية (بيانات افتراضية، محاكاة محلية)':'متصل بالشيت')+'</div></div>'+
+ '<div class="row">'+(B.isMock?'<label class="sub">تجربة بصفة <select id="who" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px">'+users.map(x=>'<option value="'+x.email+'"'+(x.email===u.email?' selected':'')+'>'+esc(x.name)+' — '+ROLE_AR[x.role]+'</option>').join('')+'</select></label><button class="btn" id="reset">تصفير التجربة</button>':'')+
+ '<span class="badge">'+esc(u.name)+' · '+ROLE_AR[u.role]+' · '+STAGE_AR[u.stage]+'</span></div>'+
+ '<div style="min-width:240px;flex:0 1 320px"><div class="row" style="justify-content:space-between;font-weight:700"><span>المعتمد/المنشور ضمن نطاقك</span><span>'+done+' من '+vis.length+'</span></div><div class="bar"><i style="width:'+pct+'%"></i></div></div></header>'+
+ '<div class="cols">'+
+ '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
+ '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="مثال: طالب 15" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
+ '<div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><small>'+L(s.class)+' · '+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub">لا نتائج.</div>')+'</div></section>'+
+ '<section class="card c2">'+(stu?
+  '<div class="row" style="justify-content:space-between"><div><div class="sub">'+L(stu.class)+' · '+STAGE_AR[stu.stage]+'</div><h2 style="margin:0;font-size:18px">'+esc(stu.name)+'</h2></div><span class="badge b-'+(S.status==='NONE'?'DRAFT':S.status)+'">'+ST_AR[S.status]+'</span></div>'+
+  (editable()?'':'<div class="sub">'+(['counselor','deputy','admin'].includes(u.role)?'التقرير مقفل بحالته الحالية.':'دورك لا يحرّر المحتوى؛ يمكنك الاعتماد أو الإعادة بحسب الحالة.')+'</div>')+
+  [['strength','fs-s','النقاط الإيجابية ونقاط القوة'],['improve','fs-i','نقاط تحتاج إلى دعم وتحسين'],['recommend','fs-r','التوصيات']].map(([c,k,t])=>
+   '<fieldset class="'+k+'"><legend>'+t+' ('+S.items.filter(i=>i.category===c).length+'/'+MAX[c]+')</legend><div class="opts">'+optsHtml(c)+'</div>'+
+   (editable()?'<form class="add" data-add="'+c+'"><input data-draft="'+c+'" value="'+esc(S.drafts[c])+'" placeholder="عبارة إضافية (اختياري)" aria-label="عبارة إضافية" maxlength="'+MAXC+'"><button class="btn" type="submit">إضافة</button></form>':'')+'</fieldset>').join('')+
+  actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
+ '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
+  '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
+  (B.isMock?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
+  (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
+  '<div class="wrap"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
+ const host=$('#host');
+ if(host&&stu){host.outerHTML=sheetHtml(stu.name,S.items).replace('class="sheet"','class="sheet"');}
+ else if(host){host.remove();}
+ const sh=$('.scaled .sheet');if(sh){sh.style.position='absolute';}
+ bind();
+}
+function bind(){
+ const app=$('#app');
+ app.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{S.q='';S.cls=b.dataset.cls;const f=S.students.find(s=>s.class===S.cls);f?pick(f.id):render();});
+ app.querySelectorAll('[data-stu]').forEach(b=>b.onclick=()=>pick(b.dataset.stu));
+ app.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>toggle(c.dataset.cat,c.dataset.t));
+ app.querySelectorAll('form[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();addCustom(f.dataset.add);});
+ app.querySelectorAll('input[data-draft]').forEach(i=>i.oninput=()=>{S.drafts[i.dataset.draft]=i.value;});
+ app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+ const r=$('#reason');if(r)r.oninput=()=>{S.reason=r.value;};
+ const q=$('#q');if(q)q.oninput=()=>{S.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};
+ const w=$('#who');if(w)w.onchange=()=>switchUser(w.value);
+ const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
+ const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
+ const pr=$('#print');if(pr)pr.onclick=doPrint;
+ const au=$('#audit');if(au)au.onclick=async()=>{const rows=await B.audit();$('#auditBody').innerHTML='<h3>سجل التدقيق (آخر 60)</h3><table class="au"><tr><th>الوقت</th><th>الحساب</th><th>الإجراء</th><th>الهدف</th><th>تفصيل</th></tr>'+rows.map(x=>'<tr><td>'+esc(x.ts.slice(0,19).replace('T',' '))+'</td><td>'+esc(x.email)+'</td><td>'+x.action+'</td><td>'+esc(x.target)+'</td><td>'+esc(x.detail)+'</td></tr>').join('')+'</table>';$('#auditDlg').showModal();};
+}
+async function doPrint(){
+ const pa=$('#printArea');let html='';
+ if(S.printScope==='class'){
+  const ids=S.students.filter(s=>s.class===S.cls&&['APPROVED','PUBLISHED'].includes(s.status));
+  if(!ids.length){say('لا تقارير معتمدة أو منشورة في هذا الفصل.','err');return;}
+  for(const s of ids){const r=await B.getReport(s.id);html+=sheetHtml(s.name,r.items||[]);}
+ }else{const s=curStudent();if(!s)return;html=sheetHtml(s.name,S.items);}
+ pa.innerHTML=html;
+ setTimeout(()=>{try{window.print();}catch(e){say('الطباعة غير متاحة هنا.','err');}},150);
+}
+boot().catch(e=>{document.body.insertAdjacentHTML('afterbegin','<p style="padding:16px;color:#a02020">خطأ في التشغيل: '+esc(e.message)+'</p>');});
+</script>
+</body>
+</html>
