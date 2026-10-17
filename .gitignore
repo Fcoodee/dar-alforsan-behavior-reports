@@ -1,0 +1,9 @@
+# بيانات حقيقية: لا تُدفع إلى Git مطلقاً (أسماء طلاب، رسائل بريد، ملفات Excel/Word/PDF)
+data/
+*.xlsx
+*.xls
+*.csv
+*.docx
+*.pdf
+.clasp.json
+.env

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base target="_top">
+<style>
+body{font-family:Tahoma,Arial,sans-serif;margin:24px;color:#16222d}
+pre{background:#eef2f5;padding:12px;border-radius:8px;white-space:pre-wrap}
+button{min-height:44px;padding:0 16px;font-size:15px}
+</style>
+</head>
+<body>
+<h1>تقارير الأداء — اختبار الاتصال</h1>
+<p>صفحة اختبار مبدئية للتحقق من الهوية والصلاحيات قبل ربط الواجهة الكاملة.</p>
+<button type="button" id="go">اختبر حسابي</button>
+<pre id="out" role="status">—</pre>
+<script>
+/* وضع المعاينة المحلية: عند فتح الملف مباشرة من الجهاز لا يوجد google.script.run،
+   فنحاكيه ببيانات وهمية. داخل Apps Script الحقيقي لا يُستخدم هذا الجزء. */
+if (typeof google === 'undefined') {
+  document.body.insertAdjacentHTML('afterbegin', '<p style="background:#fff3cd;padding:10px;border-radius:8px">وضع المعاينة المحلية: البيانات وهمية، وليس هذا هو الاتصال الحقيقي بالشيت.</p>');
+  var mockRun = function (ok, fail) {
+    return {
+      withSuccessHandler: function (f) { return mockRun(f, fail); },
+      withFailureHandler: function (f) { return mockRun(ok, f); },
+      api_me: function () { setTimeout(function () { ok({ name: 'مستخدم تجريبي', role: 'counselor', stage: 'primary' }); }, 300); },
+      api_students: function () { setTimeout(function () { ok(new Array(10).fill(0)); }, 300); }
+    };
+  };
+  window.google = { script: { run: mockRun(function () {}, function () {}) } };
+}
+document.getElementById('go').addEventListener('click', function () {
+  var out = document.getElementById('out'); out.textContent = 'جارٍ التحقق…';
+  google.script.run
+    .withSuccessHandler(function (me) {
+      google.script.run.withSuccessHandler(function (list) {
+        out.textContent = 'الاسم: ' + me.name + '\nالدور: ' + me.role + '\nالمرحلة: ' + me.stage + '\nعدد الطلاب المتاحين لك: ' + list.length;
+      }).withFailureHandler(function (e) { out.textContent = 'خطأ: ' + e.message; }).api_students();
+    })
+    .withFailureHandler(function (e) { out.textContent = 'خطأ: ' + e.message; })
+    .api_me();
+});
+</script>
+</body>
+</html>
