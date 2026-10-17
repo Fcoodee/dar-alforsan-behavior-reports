@@ -51,6 +51,15 @@ async function suite(b,url,tag){
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
  
+ // مهندس النظام
+ await relog(p,url,'syseng','eng');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' syseng يرى 19 فصلاً');
+ ok(await p.$('#reset')!==null&&await p.$('#audit')!==null,tag+' syseng يرى التصفير وسجل التدقيق');
+ ok((await p.textContent('body')).includes('ملاحظات الصيانة'),tag+' syseng يرى ملاحظات الصيانة');
+ await relog(p,url,'mgr','min');
+ ok(await p.$('#reset')===null&&!(await p.textContent('body')).includes('ملاحظات الصيانة'),tag+' المدير لا يرى التصفير ولا ملاحظات الصيانة');
+ await relog(p,url,'dep0','admin48');
+ ok(await p.$('#audit')===null&&await p.$('#reset')===null,tag+' الوكيل لا يرى أدوات المهندس');
  // معرّف مشترك قديم لم يعد مقبولاً
  await p.evaluate(()=>{sessionStorage.clear();localStorage.removeItem('dfa_try_v1');});await p.goto(url);await p.waitForSelector('#lf');
  await login(p,'admin','min');ok((await p.textContent('#lerr')).includes('غير صحيحة'),tag+' المعرّف المشترك admin لم يعد يعمل');
@@ -63,7 +72,7 @@ async function suite(b,url,tag){
 }
 (async()=>{
  const txt=fs.readFileSync(path.join(root,'access.txt'),'utf8');
- ok(!/,(048|admin48|admin148|min|كلمة مرور),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
+ ok(!/,(048|admin48|admin148|min|eng|كلمة مرور),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
  const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined});
  await suite(b,'file://'+path.join(root,'index.html'),'[file]');
  const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http]');srv.close();

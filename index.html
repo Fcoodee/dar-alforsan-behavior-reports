@@ -224,6 +224,14 @@ function usersBarHtml(){
  return '<div class="card"><div class="sub" style="margin-bottom:8px">فريق العمل — أرقام المتابعة لكل دور (تظهر لك بصفتك مديراً):</div><div class="ub">'+
   window.TEAM.map(x=>'<div class="uc"><span class="un">'+esc(x.name)+'</span><span class="ur">'+ROLE_AR[x.role]+' · '+stageLabel(x)+'</span><span class="pills">'+
    badgesFor(x).map(b=>'<span class="pl '+b[2]+'"><b>'+b[1]+'</b> '+b[0]+'</span>').join('')+'</span></div>').join('')+'</div></div>';}
+function maintHtml(){
+ if(S.user.role!=='admin')return '';
+ const a=agg(S.stats,STG);
+ return '<section class="card" style="border-right:5px solid #5c4306"><h2 style="margin:0 0 8px;font-size:17px">ملاحظات الصيانة (لمهندس النظام فقط)</h2><ul style="margin:0;padding-inline-start:20px;line-height:1.9;font-size:13.5px">'+
+  '<li>وضع التشغيل: '+(B.isMock?'محاكاة محلية تُخزَّن في متصفح هذا الجهاز (localStorage)؛ البيانات افتراضية بالكامل.':'متصل بالشيت عبر Apps Script.')+'</li>'+
+  '<li>الدخول: قفل متصفح يقرأ access.txt (PBKDF2). لا يحمي بيانات حقيقية؛ الإنتاج بحسابات Google عبر Apps Script.</li>'+
+  '<li>الحجم الحالي: '+a.total+' طالباً · تقارير بدأت: '+(a.total-a.NONE)+' · معتمدة/منشورة: '+finOk(a)+'.</li>'+
+  '<li>الأدوات: زر «تصفير التجربة» و«سجل التدقيق» في الرأس. التصفير يمسح التقارير المحلية في هذا المتصفح فقط.</li></ul></section>';}
 function dashHtml(){
  const u=S.user,st=stagesFor(u),tot=agg(S.stats,st);
  let msg='';
@@ -366,9 +374,9 @@ function render(){
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
  "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
  "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
- "<div class=\"ctl\">"+(B.isMock&&/[?&]dev=1/.test(location.search)?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
+ "<div class=\"ctl\">"+(B.isMock&&u.role==="admin"?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
- usersBarHtml()+dashHtml()+
+ usersBarHtml()+dashHtml()+maintHtml()+
  '<div class="cols">'+
  '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
  '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="مثال: طالب 15" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
@@ -382,7 +390,7 @@ function render(){
   actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
  '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
   '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
-  (B.isMock&&S.user.role==='principal'?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
+  (B.isMock&&['principal','admin'].includes(S.user.role)?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');
