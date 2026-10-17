@@ -107,6 +107,25 @@ function listStudents_(ctx) {
     .map(function (s) { return { id: s.id, name: s.name, stage: s.stage, class: s.class, status: reports[s.id] || 'NONE' }; });
 }
 
+
+/** إحصاءات المتابعة لكل مرحلة ضمن صلاحية المستخدم (للوحة المتابعة والأرقام بجانب المستخدم). */
+function api_stats() { return stats_(whoAmI_()); }
+
+function stats_(ctx) {
+  var out = {};
+  STAGES.forEach(function (st) {
+    if (canSeeStage_(ctx, st)) out[st] = { total: 0, NONE: 0, DRAFT: 0, SUBMITTED: 0, REVIEWED: 0, APPROVED: 0, PUBLISHED: 0 };
+  });
+  var status = {};
+  table_('Reports').filter(function (r) { return r.year === YEAR; }).forEach(function (r) { status[r.studentId] = r.status; });
+  table_('Students').filter(function (s) { return s.active === true && out[s.stage]; }).forEach(function (s) {
+    var k = status[s.id] || 'NONE';
+    out[s.stage].total++;
+    out[s.stage][k]++;
+  });
+  return { stages: out };
+}
+
 function api_library() { return table_('Library').filter(function (l) { return l.active === true; })
   .map(function (l) { return { id: l.id, category: l.category, text: l.text, stage: l.stage }; }); }
 
@@ -238,6 +257,10 @@ function selfTest() {
     transition_(c, 'TEST-1', 'SUBMITTED');
     throws(function () { transition_(c, 'TEST-1', 'APPROVED'); }, 'الموجه لا يعتمد');
     throws(function () { saveReport_(c, 'TEST-1', items); }, 'التقرير المُسلَّم مقفل للتعديل');
+    var stC = stats_(c), stD = stats_(d), stP = stats_(p);
+    ok(Object.keys(stC.stages).join() === 'primary' && Object.keys(stD.stages).join() === 'middle', 'الإحصاءات مقيّدة بمرحلة المستخدم');
+    ok(Object.keys(stP.stages).length === 3, 'إحصاءات المدير تشمل المراحل الثلاث');
+    ok(stC.stages.primary.SUBMITTED >= 1, 'الإرسال يظهر في إحصاءات الوكيل/الموجه');
     var dp = whoAmI_('d.middle@example.test');
     throws(function () { transition_(dp, 'TEST-1', 'REVIEWED'); }, 'وكيل المتوسط لا يراجع طالب الابتدائي');
   } catch (e) { log.push('خطأ غير متوقع: ' + e.message); }

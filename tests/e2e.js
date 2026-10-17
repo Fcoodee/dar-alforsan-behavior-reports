@@ -21,20 +21,27 @@ const out=[];const ok=(c,m)=>out.push((c?'نجح: ':'فشل: ')+m);
  ok((await p.textContent('.sheet'))?.includes('عبارة مخصصة للتجربة'),'العبارة المخصصة تظهر في المعاينة');
  // تسليم
  await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
- ok((await p.textContent('.badge.b-SUBMITTED'))==='مُسلَّم','التسليم يغيّر الحالة');
+ ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل','الإرسال يغيّر الحالة إلى بانتظار الوكيل');
+ ok((await p.textContent('.dash')).includes('المتابعة وفاعلية العمل'),'لوحة المتابعة ظاهرة');
+ ok((await p.textContent('[data-who="counselor.primary@example.test"]')).includes('أُرسل')&&(await p.textContent('[data-who="counselor.primary@example.test"] .pl.ok b'))==='1','شارة الموجه: أُرسل 1');
+ ok((await p.textContent('[data-who="deputy.primary@example.test"] .pl.act b'))==='1','شارة وكيل الابتدائي: بانتظارك 1');
+ ok((await p.textContent('[data-who="deputy.middle@example.test"] .pl.act b'))==='0','وكيل المتوسط: بانتظارك 0');
  ok(await p.$$eval('fieldset input:not(:disabled)',e=>e.length)===0,'التقرير المُسلَّم مقفل للتعديل');
  await p.screenshot({path:'shot1.png'});
  // وكيل المتوسط لا يرى الطالب
- await p.selectOption('#who','deputy.middle@example.test');await p.waitForTimeout(400);
+ await p.click('[data-who=\"deputy.middle@example.test\"]');await p.waitForTimeout(400);
  const cm=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));ok(cm.every(c=>c.includes('م'))&&cm.length===6,'وكيل المتوسط يرى فصول المتوسط الستة فقط');
  // وكيل الابتدائي يراجع
- await p.selectOption('#who','deputy.primary@example.test');await p.waitForTimeout(400);
+ await p.click('[data-who=\"deputy.primary@example.test\"]');await p.waitForTimeout(400);
  await p.click('[data-stu="S-0001"]');await p.waitForTimeout(300);
- ok(await p.$('[data-go=REVIEWED]')!==null,'وكيل الابتدائي يرى زر المراجعة');
+ ok(await p.$('[data-go=REVIEWED]')!==null,'وكيل الابتدائي يرى زر المراجعة والاعتماد');
+ await p.click('[data-flt=todo]');await p.waitForTimeout(200);
+ ok((await p.$$eval('[data-stu]',e=>e.length))===1,'فلتر «بانتظار إجرائي» يعرض تقريراً واحداً للوكيل');
  await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
+ ok((await p.textContent('[data-who="principal@example.test"] .pl.act b'))==='1','شارة المدير: بانتظارك 1');
  ok(await p.$('[data-go=APPROVED]')===null,'الوكيل لا يملك زر الاعتماد');
  // المدير يعتمد وينشر
- await p.selectOption('#who','principal@example.test');await p.waitForTimeout(500);
+ await p.click('[data-who=\"principal@example.test\"]');await p.waitForTimeout(500);
  await p.click('[data-stu="S-0001"]');await p.waitForTimeout(300);
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);
  await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);

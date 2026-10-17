@@ -74,6 +74,19 @@ header.hero>*{position:relative}header.hero>.emb{position:absolute}
 .hero .ctl select,.hero .ctl .btn{color:var(--ink)}
 .hero .ctl label{color:#d6ecf7}
 
+
+.ub{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.uc{text-align:right;border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-height:92px}
+.uc.sel{border-color:var(--pri);box-shadow:0 0 0 2px #1b6a9633;background:#eaf3f9}
+.uc .un{font-weight:800;font-size:14px}.uc .ur{font-size:12px;color:var(--mut)}
+.pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.pl{font-size:12px;border-radius:999px;padding:1px 8px;border:1px solid #c3cfd8;background:#f4f7f9}
+.pl b{font-size:13px}.pl.ok{background:#dcecdc;border-color:#b9d3bf;color:#1d4a2c}.pl.act{background:#fbecc8;border-color:#e3cf9a;color:#5c4306}
+.dash{display:flex;flex-direction:column;gap:10px}.dmsg{margin:0;font-size:15px}
+.dt{border-collapse:collapse;width:100%;font-size:13.5px}.dt th,.dt td{border:1px solid var(--line);padding:6px 10px;text-align:center}.dt thead th{background:#eef3f6}.dt tbody th{text-align:right;background:#f7f9fa}.dt tr.tot td,.dt tr.tot th{font-weight:800;background:#eef3f6}
+.sbar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#e3eaf0}.sbar i{display:block;height:12px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--mut)}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:6px;vertical-align:-1px}
+
 /* ───── التقرير A4 ───── */
 .sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{position:relative;width:794px;height:1123px;overflow:hidden;background:#fff;font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;color:#16222d}
@@ -113,7 +126,7 @@ const MAX={strength:4,improve:4,recommend:3}, MAXC=120;
 const CATS=['strength','improve','recommend'];
 const STAGE_AR={primary:'الابتدائي',middle:'المتوسط',secondary:'الثانوي',all:'كل المراحل'};
 const ROLE_AR={counselor:'موجه طلابي',deputy:'وكيل شؤون الطلاب',principal:'مدير المدرسة',admin:'مدير النظام'};
-const ST_AR={NONE:'لم يبدأ',DRAFT:'مسودة',SUBMITTED:'مُسلَّم',REVIEWED:'مُراجَع',APPROVED:'مُعتمَد',PUBLISHED:'منشور'};
+const ST_AR={NONE:'لم يبدأ',DRAFT:'مسودة',SUBMITTED:'بانتظار الوكيل',REVIEWED:'بانتظار المدير',APPROVED:'معتمد',PUBLISHED:'منشور'};
 const TRANS={
  DRAFT:{SUBMITTED:['counselor','deputy','admin']},
  SUBMITTED:{REVIEWED:['deputy','admin'],DRAFT:['deputy','principal','admin']},
@@ -159,6 +172,8 @@ const Mock=(()=>{
    if(to==='PUBLISHED')r.pdfUrl='https://drive.example.test/demo/'+id+'.pdf (رابط تجريبي، محاكاة)';
    r.updated=new Date().toISOString();log('TRANSITION','R-'+id,from+' -> '+to+(reason?' | '+reason:''));
    return wait({status:to,pdfUrl:r.pdfUrl||''});}catch(e){return fail(e)}},
+  stats(){const o={};['primary','middle','secondary'].forEach(k=>o[k]={total:0,NONE:0,DRAFT:0,SUBMITTED:0,REVIEWED:0,APPROVED:0,PUBLISHED:0});
+   DEMO.students.forEach(s=>{const k=(db.reports[s.id]||{}).status||'NONE';o[s.stage].total++;o[s.stage][k]++;});return wait({stages:o});},
   audit:()=>wait(db.audit.slice(-60).reverse()),
   reset(){db={reports:{},audit:[]};save();}
  };
@@ -166,18 +181,53 @@ const Mock=(()=>{
 const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي
  const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error(e.message||e)))[fn](...a));
  return{isMock:false,users:()=>[],as:()=>call('api_me'),me:()=>call('api_me'),students:()=>call('api_students'),library:()=>call('api_library'),
-  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:async()=>[],reset(){}};
+  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:async()=>[],stats:()=>call('api_stats'),reset(){}};
 })();
 const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
 
 /* ═════════ الحالة والواجهة ═════════ */
-const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student'};
+const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student',stats:null,filter:'all'};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const L=c=>'<bdi dir="ltr">'+esc(c)+'</bdi>';
 const fmtDate=(loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'Asia/Riyadh'},o)).format(new Date());}catch(e){return '';}};
 function clockHtml(){return '<span>'+fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</span><span>الموافق '+fmtDate('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'})+'م</span><span style="font-weight:800">'+fmtDate('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',hour12:true})+'</span>';}
 setInterval(()=>{const c=document.getElementById('clk');if(c)c.innerHTML=clockHtml();},20000);
+
+/* ───── المتابعة وفاعلية العمل ───── */
+const STG=['primary','middle','secondary'];
+const stagesFor=u=>(['principal','admin'].includes(u.role)||u.stage==='all')?STG:[u.stage];
+function agg(stats,stages){const a={total:0,NONE:0,DRAFT:0,SUBMITTED:0,REVIEWED:0,APPROVED:0,PUBLISHED:0};
+ stages.forEach(s=>{const x=stats&&stats.stages&&stats.stages[s];if(x)for(const k in a)a[k]+=x[k]||0;});return a;}
+const sent=a=>a.SUBMITTED+a.REVIEWED+a.APPROVED+a.PUBLISHED;
+const depOk=a=>a.REVIEWED+a.APPROVED+a.PUBLISHED;
+const finOk=a=>a.APPROVED+a.PUBLISHED;
+function badgesFor(u){const a=agg(S.stats,stagesFor(u));
+ if(u.role==='counselor')return[['أُرسل',sent(a),'ok'],['متبقٍ',a.total-sent(a),'rem']];
+ if(u.role==='deputy')return[['بانتظارك',a.SUBMITTED,'act'],['متبقٍ للاعتماد',a.total-depOk(a),'rem']];
+ if(u.role==='principal')return[['مرسَل',sent(a),'ok'],['معتمد',finOk(a),'ok'],['بانتظارك',a.REVIEWED,'act']];
+ return[['الطلاب',a.total,'rem']];}
+const todoSt=u=>u.role==='deputy'?['SUBMITTED']:u.role==='principal'?['REVIEWED']:['NONE','DRAFT'];
+function usersBarHtml(){
+ if(!B.isMock)return '';
+ return '<div class="card"><div class="sub" style="margin-bottom:8px">تجربة بصفة مستخدم آخر — الأرقام بجانب كل مستخدم تتغير مع تقدّم العمل:</div><div class="ub">'+
+  B.users().map(x=>'<button class="uc'+(x.email===S.user.email?' sel':'')+'" data-who="'+x.email+'"><span class="un">'+esc(x.name)+'</span><span class="ur">'+ROLE_AR[x.role]+' · '+STAGE_AR[x.stage]+'</span><span class="pills">'+
+   badgesFor(x).map(b=>'<span class="pl '+b[2]+'"><b>'+b[1]+'</b> '+b[0]+'</span>').join('')+'</span></button>').join('')+'</div></div>';}
+function dashHtml(){
+ const u=S.user,st=stagesFor(u),tot=agg(S.stats,st);
+ let msg='';
+ if(u.role==='counselor')msg='أرسلتَ <b>'+sent(tot)+'</b> من <b>'+tot.total+'</b> تقريراً، والمتبقي لك <b>'+(tot.total-sent(tot))+'</b>.';
+ else if(u.role==='deputy')msg='بانتظار مراجعتك واعتمادك <b>'+tot.SUBMITTED+'</b> تقريراً، ولم يصلك بعد <b>'+(tot.total-sent(tot))+'</b> من أصل <b>'+tot.total+'</b>.';
+ else if(u.role==='principal')msg='المرسَل <b>'+sent(tot)+'</b> · المعتمد <b>'+finOk(tot)+'</b> · بانتظار اعتمادك <b>'+tot.REVIEWED+'</b> من أصل <b>'+tot.total+'</b> طالباً.';
+ else msg='إجمالي الطلاب <b>'+tot.total+'</b>.';
+ const seg=(a)=>{const t=a.total||1,w=n=>(n/t*100).toFixed(1)+'%';
+  return '<div class="sbar" role="img" aria-label="توزيع الحالات"><i style="width:'+w(finOk(a))+';background:#1d4a2c"></i><i style="width:'+w(a.REVIEWED)+';background:#1b6a96"></i><i style="width:'+w(a.SUBMITTED)+';background:#d99a1e"></i><i style="width:'+w(a.DRAFT)+';background:#9fb0bd"></i></div>';};
+ const row=(label,a,strong)=>'<tr'+(strong?' class="tot"':'')+'><th scope="row">'+label+'</th><td>'+a.total+'</td><td>'+a.NONE+'</td><td>'+a.DRAFT+'</td><td>'+a.SUBMITTED+'</td><td>'+a.REVIEWED+'</td><td>'+finOk(a)+'</td><td>'+(a.total?Math.round(sent(a)/a.total*100):0)+'%</td><td style="min-width:140px">'+seg(a)+'</td></tr>';
+ return '<section class="card dash"><div class="row" style="justify-content:space-between"><h2 style="margin:0;font-size:18px">المتابعة وفاعلية العمل على التقارير</h2><span class="sub">'+STAGE_AR[u.stage]+' · '+ROLE_AR[u.role]+'</span></div>'+
+  '<p class="dmsg">'+msg+'</p><div class="wrap" style="justify-content:flex-start"><table class="dt"><thead><tr><th>المرحلة</th><th>الطلاب</th><th>لم يبدأ</th><th>مسودة</th><th>بانتظار الوكيل</th><th>بانتظار المدير</th><th>معتمد</th><th>نسبة الإرسال</th><th>التوزيع</th></tr></thead><tbody>'+
+  st.map(s=>row(STAGE_AR[s],agg(S.stats,[s]),false)).join('')+(st.length>1?row('الإجمالي',tot,true):'')+'</tbody></table></div>'+
+  '<div class="legend"><span><i style="background:#1d4a2c"></i>معتمد</span><span><i style="background:#1b6a96"></i>بانتظار المدير</span><span><i style="background:#d99a1e"></i>بانتظار الوكيل</span><span><i style="background:#9fb0bd"></i>مسودة</span></div></section>';}
+
 const norm=s=>s.replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
 const classes=()=>[...new Set(S.students.map(s=>s.class))];
 const curStudent=()=>S.students.find(s=>s.id===S.cur);
@@ -190,7 +240,7 @@ async function boot(){
  render();
  if(S.cls){const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
 }
-async function loadAll(){S.user=await B.me();S.students=await B.students();S.lib=await B.library();}
+async function loadAll(){S.user=await B.me();S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
 async function switchUser(email){await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
 async function pick(id){
  S.cur=id;S.msg='';S.reason='';
@@ -200,7 +250,7 @@ async function pick(id){
 const has=(cat,t)=>S.items.some(i=>i.category===cat&&i.text===t);
 const editable=()=>['NONE','DRAFT'].includes(S.status)&&['counselor','deputy','admin'].includes(S.user.role);
 async function persist(){
- try{const r=await B.saveReport(S.cur,S.items);S.status=r.status;const s=curStudent();s.status=r.status;say('تم الحفظ كمسودة.','ok');}
+ try{const r=await B.saveReport(S.cur,S.items);S.status=r.status;const s=curStudent();s.status=r.status;S.stats=await B.stats();say('تم الحفظ كمسودة.','ok');}
  catch(e){say(e.message,'err');await pick(S.cur);return;}
  render();
 }
@@ -217,7 +267,7 @@ async function addCustom(cat){
 }
 async function go(to){
  const needReason=to==='DRAFT';
- try{const r=await B.transition(S.cur,to,needReason?S.reason:'');S.status=r.status;S.pdfUrl=r.pdfUrl||'';curStudent().status=r.status;S.reason='';say('تمت النقلة إلى «'+ST_AR[r.status]+'».','ok');}
+ try{const r=await B.transition(S.cur,to,needReason?S.reason:'');S.status=r.status;S.pdfUrl=r.pdfUrl||'';curStudent().status=r.status;S.stats=await B.stats();S.reason='';say('تمت النقلة إلى «'+ST_AR[r.status]+'».','ok');}
  catch(e){say(e.message,'err');}
  render();
 }
@@ -248,7 +298,7 @@ function optsHtml(cat){
 function actionsHtml(){
  const out=[],u=S.user.role,st=S.status;
  const t=TRANS[st]||{};
- const lbl={SUBMITTED:'تسليم للمراجعة',REVIEWED:'اعتماد المراجعة',APPROVED:'اعتماد المدير',PUBLISHED:'نشر وتوليد PDF',DRAFT:'إعادة للمسودة'};
+ const lbl={SUBMITTED:'إرسال للوكيل',REVIEWED:'مراجعة واعتماد الوكيل',APPROVED:'اعتماد المدير',PUBLISHED:'نشر وتوليد PDF',DRAFT:'إعادة للمسودة'};
  Object.keys(t).forEach(to=>{if(t[to].includes(u))out.push('<button class="btn'+(to==='DRAFT'?'':' pri')+'" data-go="'+to+'">'+lbl[to]+'</button>');});
  let reason='';
  if((t.DRAFT||[]).includes(u))reason='<input id="reason" placeholder="سبب الإعادة (مطلوب عند الإعادة)" value="'+esc(S.reason)+'" aria-label="سبب الإعادة" style="flex:1 1 200px;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px">';
@@ -257,19 +307,21 @@ function actionsHtml(){
 function render(){
  const u=S.user,vis=S.students,done=vis.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length,pct=vis.length?Math.round(done/vis.length*100):0;
  const q=norm(S.q);
- const list=(q?vis.filter(s=>norm(s.name).includes(q)):vis.filter(s=>s.class===S.cls)).slice(0,60);
+ const todo=vis.filter(s=>todoSt(u).includes(s.status));
+ const list=(q?vis.filter(s=>norm(s.name).includes(q)):S.filter==='todo'?todo:vis.filter(s=>s.class===S.cls)).slice(0,60);
  const users=B.isMock?B.users():[];
  const stu=curStudent();
  $('#app').innerHTML=
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
  "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي · "+(B.isMock?"نسخة تجريبية (بيانات افتراضية، محاكاة محلية)":"متصل بالشيت")+"</div>"+
  "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
- "<div class=\"ctl\">"+(B.isMock?"<label>تجربة بصفة <select id=\"who\" style=\"min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px\">"+users.map(x=>"<option value=\""+x.email+"\""+(x.email===u.email?" selected":"")+">"+esc(x.name)+" — "+ROLE_AR[x.role]+"</option>").join("")+"</select></label><button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+STAGE_AR[u.stage]+"</span></div></div>"+
+ "<div class=\"ctl\">"+(B.isMock?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+STAGE_AR[u.stage]+"</span></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
+ usersBarHtml()+dashHtml()+
  '<div class="cols">'+
  '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
  '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="مثال: طالب 15" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
- '<div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><small>'+L(s.class)+' · '+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub">لا نتائج.</div>')+'</div></section>'+
+ '<div class="row"><button class="btn'+(S.filter==='all'?' sel':'')+'" data-flt="all">كل طلاب الفصل</button><button class="btn'+(S.filter==='todo'?' sel':'')+'" data-flt="todo">بانتظار إجرائي ('+todo.length+')</button></div><div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><small>'+L(s.class)+' · '+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub">لا نتائج.</div>')+'</div></section>'+
  '<section class="card c2">'+(stu?
   '<div class="row" style="justify-content:space-between"><div><div class="sub">'+L(stu.class)+' · '+STAGE_AR[stu.stage]+'</div><h2 style="margin:0;font-size:18px">'+esc(stu.name)+'</h2></div><span class="badge b-'+(S.status==='NONE'?'DRAFT':S.status)+'">'+ST_AR[S.status]+'</span></div>'+
   (editable()?'':'<div class="sub">'+(['counselor','deputy','admin'].includes(u.role)?'التقرير مقفل بحالته الحالية.':'دورك لا يحرّر المحتوى؛ يمكنك الاعتماد أو الإعادة بحسب الحالة.')+'</div>')+
@@ -290,7 +342,7 @@ function render(){
 }
 function bind(){
  const app=$('#app');
- app.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{S.q='';S.cls=b.dataset.cls;const f=S.students.find(s=>s.class===S.cls);f?pick(f.id):render();});
+ app.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{S.q='';S.filter='all';S.cls=b.dataset.cls;const f=S.students.find(s=>s.class===S.cls);f?pick(f.id):render();});
  app.querySelectorAll('[data-stu]').forEach(b=>b.onclick=()=>pick(b.dataset.stu));
  app.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>toggle(c.dataset.cat,c.dataset.t));
  app.querySelectorAll('form[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();addCustom(f.dataset.add);});
@@ -298,7 +350,8 @@ function bind(){
  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  const r=$('#reason');if(r)r.oninput=()=>{S.reason=r.value;};
  const q=$('#q');if(q)q.oninput=()=>{S.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};
- const w=$('#who');if(w)w.onchange=()=>switchUser(w.value);
+ app.querySelectorAll('[data-who]').forEach(b=>b.onclick=()=>switchUser(b.dataset.who));
+ app.querySelectorAll('[data-flt]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.flt;render();});
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
  const pr=$('#print');if(pr)pr.onclick=doPrint;
