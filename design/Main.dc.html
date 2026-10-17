@@ -24,15 +24,21 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </helmet>
 <div class="screenOnly" dir="rtl" style="box-sizing: border-box; min-height: 1180px; background: #eef2f5; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; color: #16222d; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 16px">
 
-<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; background: #ffffff; border: 1px solid #d3dce3; border-radius: 10px; padding: 14px 20px">
-<div style="display: flex; flex-direction: column; gap: 2px">
-<h1 style="margin: 0; font-size: 22px; font-weight: 800">تقارير الأداء السلوكي والأكاديمي</h1>
-<div style="font-size: 14px; color: #4a5b69">مدارس دار الفرسان الأهلية · العام الدراسي {{year}}ه · جميع المراحل</div>
+<header style="position: relative; overflow: hidden; border-radius: 14px; background: #14577a; color: #ffffff; padding: 20px 24px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; border-bottom: 6px solid #7cc4e4">
+<img src="/_blob/6d968794728fff88f11b8cddc386a787" alt="" aria-hidden="true" style="position: absolute; left: -40px; bottom: -70px; width: 520px; opacity: 0.1; pointer-events: none">
+<div style="position: relative; flex: none; background: #ffffff; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center"><img src="/_blob/2edee0e749b4c03e3cd60fde103d70c7" alt="شعار مدارس دار الفرسان الأهلية" style="width: 112px; height: 94px; object-fit: contain"></div>
+<div style="position: relative; display: flex; flex-direction: column; gap: 8px; flex: 1 1 320px">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; padding: 4px 14px; font-size: 14px; font-weight: 700">العام الدراسي {{year}}هـ</span>
+<span style="background: #ffffff; color: #14577a; border-radius: 999px; padding: 4px 14px; font-size: 14px; font-weight: 800">الفصل الدراسي الأول</span>
 </div>
-<div style="display: flex; flex-direction: column; gap: 6px; min-width: 260px; flex: 0 1 340px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; line-height: 1.3">تقارير الأداء السلوكي والأكاديمي</h1>
+<div style="font-size: 14.5px; color: #d6ecf7">مدارس دار الفرسان الأهلية · القسم الأهلي · جميع المراحل</div>
+</div>
+<div style="position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 260px; flex: 0 1 340px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 12px 16px">
 <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700"><span>التقارير المكتملة</span><span>{{doneAll}} من {{total}}</span></div>
-<div style="height: 10px; border-radius: 5px; background: #dbe4ea; overflow: hidden"><div style="height: 10px; background: #1b6a96; width: {{pct}}%"></div></div>
-<div style="font-size: 12.5px; color: #4a5b69">يُعدّ التقرير مكتملاً عند اختيار نقطة قوة وملاحظة تحسين وتوصية على الأقل.</div>
+<div style="height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.28); overflow: hidden"><div style="height: 10px; background: #bfe6f7; width: {{pct}}%"></div></div>
+<div style="font-size: 12.5px; color: #d6ecf7">يُعدّ التقرير مكتملاً عند اختيار نقطة قوة وملاحظة تحسين وتوصية على الأقل.</div>
 </div>
 </header>
 
@@ -95,8 +101,8 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 </div>
 
-<fieldset style="margin: 0; border: 1px solid #cdbfe8; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f7f4fc">
-<legend style="font-size: 14px; font-weight: 800; color: #3f2a73; padding: 0 6px">النقاط الإيجابية ونقاط القوة ({{p.count}}/{{p.max}})</legend>
+<fieldset style="margin: 0; border: 1px solid #b9d3bf; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f6fbf7">
+<legend style="font-size: 14px; font-weight: 800; color: #1d4a2c; padding: 0 6px">النقاط الإيجابية ونقاط القوة ({{p.count}}/{{p.max}})</legend>
 <div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
 <sc-for list="{{p.items}}" as="it" hint-placeholder-count="8">
 <label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
@@ -107,12 +113,12 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 <form onSubmit="{{ p.add }}" style="display: flex; gap: 8px">
 <input type="text" value="{{p.draft}}" onChange="{{ p.setDraft }}" aria-label="عبارة إضافية للنقاط الإيجابية" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
-<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #3f2a73; background: #3f2a73; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #1d4a2c; background: #1d4a2c; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
 </form>
 </fieldset>
 
-<fieldset style="margin: 0; border: 1px solid #c6ccd2; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #f5f6f7">
-<legend style="font-size: 14px; font-weight: 800; color: #36404a; padding: 0 6px">نقاط تحتاج إلى دعم وتحسين ({{i.count}}/{{i.max}})</legend>
+<fieldset style="margin: 0; border: 1px solid #e3cf9a; border-radius: 8px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: #fffaf0">
+<legend style="font-size: 14px; font-weight: 800; color: #5c4306; padding: 0 6px">نقاط تحتاج إلى دعم وتحسين ({{i.count}}/{{i.max}})</legend>
 <div style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
 <sc-for list="{{i.items}}" as="it" hint-placeholder-count="8">
 <label style="min-height: 36px; display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.5; padding: 4px 2px; opacity: {{it.opacity}}">
@@ -123,7 +129,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #1b6a96;outline-offse
 </div>
 <form onSubmit="{{ i.add }}" style="display: flex; gap: 8px">
 <input type="text" value="{{i.draft}}" onChange="{{ i.setDraft }}" aria-label="عبارة إضافية لنقاط التحسين" placeholder="عبارة إضافية (اختياري)" style="flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid #9fb0bd; border-radius: 8px; padding: 0 12px; font-size: 14px">
-<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #36404a; background: #36404a; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
+<button type="submit" style="min-height: 44px; border-radius: 8px; border: 1px solid #5c4306; background: #5c4306; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 14px">إضافة</button>
 </form>
 </fieldset>
 
@@ -195,14 +201,14 @@ const TOTAL = ALL.reduce((n, c) => n + DATA[c].length, 0);
 const SCALE_NORM = (s) => (s || '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
 
 class Component extends DCLogic {
-  state = { stage: 'p', cls: '1/أ', idx: 0, q: '', sel: {}, year: '1447', drafts: { p: '', i: '', r: '' }, scope: 'student', saved: null, msg: '' };
+  state = { stage: 'p', cls: '1/أ', idx: 0, q: '', sel: {}, year: '1447-1448', drafts: { p: '', i: '', r: '' }, scope: 'student', saved: null, msg: '' };
 
   componentDidMount() {
     try {
       const raw = window.localStorage.getItem(LS);
       if (raw) {
         const o = JSON.parse(raw);
-        this.setState({ sel: o.sel || {}, year: o.year || '1447', saved: true });
+        this.setState({ sel: o.sel || {}, year: o.year || '1447-1448', saved: true });
       }
     } catch (e) { /* التخزين غير متاح: يعمل التطبيق دون حفظ */ }
   }

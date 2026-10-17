@@ -25,8 +25,8 @@ body{margin:0}
 <p style="margin: 0; font-size: 12.5px; line-height: 1.7; text-align: justify">في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>
 <div style="border: 1px solid #9fb0bd; border-radius: 6px; overflow: hidden">
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))">
-<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #e5dcf6; color: #3f2a73; border-left: 1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div>
-<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #e4e7ea; color: #36404a">نقاط تحتاج إلى دعم وتحسين</div>
+<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #dcecdc; color: #1d4a2c; border-left: 1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div>
+<div style="padding: 6px 10px; text-align: center; font-size: 14px; font-weight: 800; background: #fbecc8; color: #5c4306">نقاط تحتاج إلى دعم وتحسين</div>
 </div>
 <sc-for list="{{rows}}" as="row" hint-placeholder-count="4">
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid #9fb0bd">
@@ -50,7 +50,7 @@ body{margin:0}
 class Component extends DCLogic {
   renderVals() {
     const d = this.props.d || {
-      name: '[اسم الطالب]', year: '1447',
+      name: '[اسم الطالب]', year: '1447-1448',
       pos: ['يشارك بفاعلية أثناء الحصة الدراسية.', 'يتحلى بالهدوء وحسن الاستماع أثناء الشرح.', 'يتحلى بالأمانة والصدق في تعاملاته اليومية.', 'يحافظ على النظام داخل الفصل والطابور.'],
       imp: ['يعمل على تحسين مهارات الاستماع والإنصات.', 'يحرص على تنظيم وقته وإنجاز المهام المطلوبة.'],
       rec: ['تنمية المهارات الشخصية والاجتماعية بالمشاركة في الأنشطة التطوعية والبرامج الهادفة.', 'استثمار الإجازة الصيفية في تنمية مهارات القراءة والتركيز.', 'تنمية مهارات التواصل والحوار الإيجابي']

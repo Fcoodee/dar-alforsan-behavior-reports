@@ -14,7 +14,7 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
 #app{padding:16px;display:flex;flex-direction:column;gap:16px}
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-header.card{border-top:4px solid #6b4fb3;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+header.hero{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
 h1{margin:0;font-size:21px;font-weight:800}
 .sub{color:var(--mut);font-size:13.5px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -36,8 +36,8 @@ h1{margin:0;font-size:21px;font-weight:800}
 .st small{color:#3d4e5c;font-size:12.5px}
 fieldset{margin:0;border-radius:8px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
 legend{font-weight:800;padding:0 6px;font-size:14px}
-.fs-s{border:1px solid #cdbfe8;background:#f7f4fc}.fs-s legend{color:#3f2a73}
-.fs-i{border:1px solid #c6ccd2;background:#f5f6f7}.fs-i legend{color:#36404a}
+.fs-s{border:1px solid #b9d3bf;background:#f6fbf7}.fs-s legend{color:var(--ok)}
+.fs-i{border:1px solid #e3cf9a;background:#fffaf0}.fs-i legend{color:var(--warn)}
 .fs-r{border:1px solid #b4cde3;background:#f4f9fd}.fs-r legend{color:var(--info)}
 .opts{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 label.o{min-height:36px;display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.5;padding:4px 2px}
@@ -53,6 +53,24 @@ label.o input{width:18px;height:18px;margin-top:2px;flex:none}
 .scaled .sheet{position:absolute;top:0;right:0;transform:scale(.78);transform-origin:top right}
 dialog{border:1px solid var(--line);border-radius:10px;max-width:760px;width:92%}
 table.au{border-collapse:collapse;width:100%;font-size:12.5px}table.au td,table.au th{border:1px solid var(--line);padding:4px 8px;text-align:right}
+
+
+header.hero{position:relative;overflow:hidden;border-radius:14px;background:#14577a;color:#fff;padding:20px 24px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;border-bottom:6px solid #7cc4e4}
+header.hero .emb{position:absolute;left:-40px;bottom:-70px;width:520px;opacity:.1;pointer-events:none}
+header.hero>*{position:relative}header.hero>.emb{position:absolute}
+.hero .logo{background:#fff;border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:center}
+.hero .logo img{width:112px;height:94px;object-fit:contain}
+.hero .tt{display:flex;flex-direction:column;gap:8px;flex:1 1 320px}
+.hero h1{font-size:28px;color:#fff}
+.hero .chip2{display:inline-block;border-radius:999px;padding:4px 14px;font-size:14px;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45)}
+.hero .chip2.w{background:#fff;color:#14577a;font-weight:800;border-color:#fff}
+.hero .sub2{font-size:14.5px;color:#d6ecf7}
+.hero .prog{display:flex;flex-direction:column;gap:8px;min-width:260px;flex:0 1 340px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 16px}
+.hero .prog .bar{background:rgba(255,255,255,.28)}.hero .prog .bar i{background:#bfe6f7}
+.hero .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hero .ctl .badge{background:rgba(255,255,255,.2);color:#fff}
+.hero .ctl select,.hero .ctl .btn{color:var(--ink)}
+.hero .ctl label{color:#d6ecf7}
 
 /* ───── التقرير A4 ───── */
 .sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -208,7 +226,7 @@ function sheetHtml(name,items){
  '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'ه</h2>'+
  '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
  '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
- '<div class="box"><div class="gr"><div class="th" style="background:#e5dcf6;color:#3f2a73;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#e4e7ea;color:#36404a">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
+ '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
  '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">التوصيات</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
  '<p>نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.</p>'+
  '<div class="ft">حفظكم الله ورعاكم، وكل عام وأنتم بخير</div></div></div>';
@@ -238,10 +256,10 @@ function render(){
  const users=B.isMock?B.users():[];
  const stu=curStudent();
  $('#app').innerHTML=
- '<header class="card"><div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+' · '+(B.isMock?'نسخة تجريبية (بيانات افتراضية، محاكاة محلية)':'متصل بالشيت')+'</div></div>'+
- '<div class="row">'+(B.isMock?'<label class="sub">تجربة بصفة <select id="who" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px">'+users.map(x=>'<option value="'+x.email+'"'+(x.email===u.email?' selected':'')+'>'+esc(x.name)+' — '+ROLE_AR[x.role]+'</option>').join('')+'</select></label><button class="btn" id="reset">تصفير التجربة</button>':'')+
- '<span class="badge">'+esc(u.name)+' · '+ROLE_AR[u.role]+' · '+STAGE_AR[u.stage]+'</span></div>'+
- '<div style="min-width:240px;flex:0 1 320px"><div class="row" style="justify-content:space-between;font-weight:700"><span>المعتمد/المنشور ضمن نطاقك</span><span>'+done+' من '+vis.length+'</span></div><div class="bar"><i style="width:'+pct+'%"></i></div></div></header>'+
+ "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
+ "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي · "+(B.isMock?"نسخة تجريبية (بيانات افتراضية، محاكاة محلية)":"متصل بالشيت")+"</div>"+
+ "<div class=\"ctl\">"+(B.isMock?"<label>تجربة بصفة <select id=\"who\" style=\"min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px\">"+users.map(x=>"<option value=\""+x.email+"\""+(x.email===u.email?" selected":"")+">"+esc(x.name)+" — "+ROLE_AR[x.role]+"</option>").join("")+"</select></label><button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+STAGE_AR[u.stage]+"</span></div></div>"+
+ "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  '<div class="cols">'+
  '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
  '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="مثال: طالب 15" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
