@@ -84,7 +84,8 @@ function whoAmI_(emailOverride) {
 }
 
 function canSeeStage_(ctx, stage) {
-  return ctx.role === 'principal' || ctx.role === 'admin' || ctx.stage === 'all' || ctx.stage === stage;
+  var mine = String(ctx.stage).split('+');
+  return ctx.role === 'principal' || ctx.role === 'admin' || mine.indexOf('all') >= 0 || mine.indexOf(stage) >= 0;
 }
 
 function studentFor_(ctx, studentId) {

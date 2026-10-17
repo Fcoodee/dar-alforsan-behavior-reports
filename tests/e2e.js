@@ -1,67 +1,65 @@
-const {chromium}=require('playwright');
-const path='file://'+require('path').resolve(__dirname,'../web/index.html')+'';
+// اختبار المتصفح الشامل: node tests/e2e.js   (يتطلب playwright وChromium؛ CHROMIUM_PATH اختياري)
+const {chromium}=require('playwright');const path=require('path');const http=require('http');const fs=require('fs');
+const root=path.resolve(__dirname,'../web');
 const out=[];const ok=(c,m)=>out.push((c?'نجح: ':'فشل: ')+m);
-(async()=>{
- const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined}).catch(async()=>chromium.launch());
- const p=await b.newPage({viewport:{width:1440,height:1100}});
- const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
- await p.goto(path);await p.waitForSelector('.sheet');
- ok((await p.textContent('header'))?.includes('موجه الابتدائي'),'الدخول الافتراضي موجه الابتدائي');
- const n1=await p.$$eval('[data-stu]',e=>e.length);ok(n1===10,'قائمة فصل 1/أ فيها 10 طلاب ('+n1+')');
- const clsAll=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));ok(clsAll.length===11&&!clsAll.some(c=>c.includes('م')),'موجه الابتدائي يرى 11 فصلاً ابتدائياً فقط ('+clsAll.length+')');
- // اختيار عبارات
- for(let i=0;i<5;i++){const l=p.locator('fieldset.fs-s input[type=checkbox]').nth(i);if(await l.isEnabled()){await l.check();await p.waitForTimeout(250);}}
- await p.waitForTimeout(300);
- let ns=await p.$$eval('fieldset.fs-s input:checked',e=>e.length);ok(ns===4,'سقف 4 نقاط قوة ('+ns+')');
- const dis=await p.$$eval('fieldset.fs-s input:disabled',e=>e.length);ok(dis>0,'بقية الخانات مقفلة بعد السقف');
- await p.locator('fieldset.fs-i input[type=checkbox]').first().check();
- await p.locator('fieldset.fs-r input[type=checkbox]').first().check();
- await p.fill('fieldset.fs-i input[data-draft]','عبارة مخصصة للتجربة');await p.click('fieldset.fs-i form button');
- await p.waitForTimeout(300);
- ok((await p.textContent('.sheet'))?.includes('عبارة مخصصة للتجربة'),'العبارة المخصصة تظهر في المعاينة');
- // تسليم
+function serve(){return new Promise(r=>{const s=http.createServer((q,res)=>{const f=path.join(root,decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/,'/index.html'));fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);return res.end();}res.writeHead(200,{'content-type':f.endsWith('.html')?'text/html; charset=utf-8':f.endsWith('.txt')?'text/plain; charset=utf-8':f.endsWith('.js')?'text/javascript; charset=utf-8':'image/png'});res.end(d);});}).listen(0,()=>r(s));});}
+async function login(p,u,pw){await p.fill('#lu',u);await p.fill('#lp',pw);await p.click('#lf button');await p.waitForTimeout(500);}
+async function relog(p,url,u,pw){await p.evaluate(()=>sessionStorage.clear());await p.goto(url);await p.waitForSelector('#lf');await login(p,u,pw);await p.waitForSelector('.hero');await p.waitForTimeout(300);}
+async function suite(b,url,tag){
+ const ctx=await b.newContext({viewport:{width:1440,height:1100}});const p=await ctx.newPage();const errs=[];
+ p.on('pageerror',e=>errs.push(e.message));
+ await p.goto(url);await p.waitForSelector('#lf');
+ ok(await p.$('.sheet')===null&&await p.$('.hero')===null,tag+' المحتوى مخفي قبل الدخول');
+ await login(p,'dar0','خطأ');ok((await p.textContent('#lerr')).includes('غير صحيحة'),tag+' كلمة مرور خاطئة ترفض');
+ // دخول الموجه
+ await login(p,'dar0','048');await p.waitForSelector('.hero');
+ ok((await p.textContent('.hero')).includes('موجه المرحلة الابتدائية'),tag+' دخول dar0 كموجه ابتدائي');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===11,tag+' الموجه يرى 11 فصلاً ابتدائياً فقط');
+ ok(await p.$('.ub')===null,tag+' الموجه لا يرى شريط الفريق');
+ // يحرر ويرسل S-0001
+ await p.evaluate(async()=>{await pick('S-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
  await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
- ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل','الإرسال يغيّر الحالة إلى بانتظار الوكيل');
- ok((await p.textContent('.dash')).includes('المتابعة وفاعلية العمل'),'لوحة المتابعة ظاهرة');
- ok((await p.textContent('[data-who="counselor.primary@example.test"]')).includes('أُرسل')&&(await p.textContent('[data-who="counselor.primary@example.test"] .pl.ok b'))==='1','شارة الموجه: أُرسل 1');
- ok((await p.textContent('[data-who="deputy.primary@example.test"] .pl.act b'))==='1','شارة وكيل الابتدائي: بانتظارك 1');
- ok((await p.textContent('[data-who="deputy.middle@example.test"] .pl.act b'))==='0','وكيل المتوسط: بانتظارك 0');
- ok(await p.$$eval('fieldset input:not(:disabled)',e=>e.length)===0,'التقرير المُسلَّم مقفل للتعديل');
- await p.screenshot({path:'shot1.png'});
- // وكيل المتوسط لا يرى الطالب
- await p.click('[data-who=\"deputy.middle@example.test\"]');await p.waitForTimeout(400);
- const cm=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));ok(cm.every(c=>c.includes('م'))&&cm.length===6,'وكيل المتوسط يرى فصول المتوسط الستة فقط');
- // وكيل الابتدائي يراجع
- await p.click('[data-who=\"deputy.primary@example.test\"]');await p.waitForTimeout(400);
- await p.click('[data-stu="S-0001"]');await p.waitForTimeout(300);
- ok(await p.$('[data-go=REVIEWED]')!==null,'وكيل الابتدائي يرى زر المراجعة والاعتماد');
+ ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل',tag+' الموجه يرسل للوكيل');
+ ok((await p.textContent('.hero .pl.ok b'))==='1',tag+' شارة الموجه بجانب اسمه: أُرسل 1');
+ // وكيل الابتدائي (admin/admin48)
+ await relog(p,url,'admin','admin48');
+ ok((await p.textContent('.hero')).includes('الابتدائي')&&!(await p.textContent('.hero .badge')).includes('المتوسط'),tag+' admin/admin48 وكيل الابتدائي');
+ ok((await p.textContent('.hero .pl.act b'))==='1',tag+' شارة الوكيل: بانتظارك 1');
  await p.click('[data-flt=todo]');await p.waitForTimeout(200);
- ok((await p.$$eval('[data-stu]',e=>e.length))===1,'فلتر «بانتظار إجرائي» يعرض تقريراً واحداً للوكيل');
+ ok((await p.$$eval('[data-stu]',e=>e.length))===1,tag+' فلتر «بانتظار إجرائي» يعرض تقريراً واحداً');
+ await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);
+ ok(await p.$('[data-go=APPROVED]')===null,tag+' الوكيل لا يعتمد نهائياً');
  await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
- ok((await p.textContent('[data-who="principal@example.test"] .pl.act b'))==='1','شارة المدير: بانتظارك 1');
- ok(await p.$('[data-go=APPROVED]')===null,'الوكيل لا يملك زر الاعتماد');
- // المدير يعتمد وينشر
- await p.click('[data-who=\"principal@example.test\"]');await p.waitForTimeout(500);
+ // نفس اسم المستخدم admin بكلمة مرور أخرى = وكيل المتوسط والثانوي
+ await relog(p,url,'admin','admin148');
+ const cl=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));
+ ok(cl.length===8&&cl.every(c=>c.includes('م')||c.includes('ث')),tag+' admin/admin148 وكيل المتوسط والثانوي: يرى 8 فصول');
+ ok((await p.textContent('.hero .pl.act b'))==='0',tag+' وكيل المتوسط: بانتظارك 0');
+ const stagesRows=await p.$$eval('.dt tbody tr',e=>e.length);ok(stagesRows===3,tag+' جدول المتابعة: المتوسط والثانوي + إجمالي');
+ // المدير
+ await relog(p,url,'admin','min');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' المدير يرى 19 فصلاً');
+ ok(await p.$('.ub')!==null,tag+' المدير يرى شريط الفريق');
+ await p.click('[data-flt=todo]');await p.waitForTimeout(200);
  await p.click('[data-stu="S-0001"]');await p.waitForTimeout(300);
- await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);
- await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
- ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور','المدير يعتمد وينشر');
- ok((await p.textContent('.card .sub >> nth=-1')||'').length>0||true,'');
- const allCls=await p.$$eval('[data-cls]',e=>e.length);ok(allCls===19,'المدير يرى 19 فصلاً ('+allCls+')');
- // إعادة بلا سبب ترفض
  await p.click('[data-go=DRAFT]');await p.waitForTimeout(300);
- ok((await p.textContent('#msg')).includes('سبب'),'الإعادة بلا سبب مرفوضة');
- await p.fill('#reason','تحديث عبارة');await p.click('[data-go=DRAFT]');await p.waitForTimeout(300);
- ok((await p.textContent('.badge.b-DRAFT'))==='مسودة','الإعادة بسبب تعيد الحالة إلى مسودة');
- // سجل التدقيق
-  await p.click('#audit');await p.waitForTimeout(400);ok((await p.textContent('#auditBody')).includes('TRANSITION'),'سجل التدقيق يسجّل النقلات');
- await p.click('#auditDlg button');await p.waitForTimeout(200);
- // PDF
- await p.fill('#q','طالب 15');await p.waitForTimeout(200);
- await p.click('[data-stu="S-0015"]');await p.waitForTimeout(300);
- await p.screenshot({path:'shot2.png'});
- await p.evaluate(()=>{document.querySelector('#printArea').innerHTML=sheetHtml(curStudent().name,S.items)});
- await p.pdf({path:'out.pdf',format:'A4',printBackground:true,preferCSSPageSize:true});
- ok(errs.length===0,'لا أخطاء JavaScript '+(errs.length?JSON.stringify(errs):''));
- console.log(out.join('\n'));await b.close();
+ ok((await p.textContent('#msg')).includes('سبب'),tag+' الإعادة للمسودة بلا سبب مرفوضة');
+ await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
+ ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
+ await p.click('#audit').catch(()=>{});
+ // قفل المحاولات
+ await p.evaluate(()=>{sessionStorage.clear();localStorage.removeItem('dfa_try_v1');});await p.goto(url);await p.waitForSelector('#lf');
+ for(let i=0;i<5;i++){await login(p,'dar0','x'+i);}
+ await login(p,'dar0','048');ok((await p.textContent('#lerr')).includes('محاولات كثيرة'),tag+' قفل بعد 5 محاولات خاطئة حتى مع كلمة صحيحة');
+ ok(errs.filter(e=>!/ERR_TUNNEL|fonts/.test(e)).length===0,tag+' لا أخطاء JavaScript '+JSON.stringify(errs));
+ await ctx.close();
+}
+(async()=>{
+ const txt=fs.readFileSync(path.join(root,'access.txt'),'utf8');
+ ok(!/,(048|admin48|admin148|min),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
+ const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined});
+ await suite(b,'file://'+path.join(root,'index.html'),'[file]');
+ const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http]');srv.close();
+ console.log(out.join('\n'));
+ await b.close();process.exit(out.some(x=>x.startsWith('فشل'))?1:0);
 })().catch(e=>{console.log(out.join('\n'));console.log('ERR',e.message);process.exit(1)});

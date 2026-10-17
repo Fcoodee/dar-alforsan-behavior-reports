@@ -119,6 +119,7 @@ header.hero>*{position:relative}header.hero>.emb{position:absolute}
 <div id="printArea" aria-hidden="true"></div>
 <dialog id="auditDlg"><div id="auditBody"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
 <script src="data.js"></script>
+<script src="access.js"></script>
 <script>
 'use strict';
 /* ═════════ قواعد العمل (مطابقة لـ apps-script/Code.gs) ═════════ */
@@ -133,7 +134,8 @@ const TRANS={
  REVIEWED:{APPROVED:['principal','admin'],DRAFT:['deputy','principal','admin']},
  APPROVED:{PUBLISHED:['principal','admin'],DRAFT:['principal','admin']},
  PUBLISHED:{DRAFT:['principal','admin']}};
-const canSee=(c,stage)=>['principal','admin'].includes(c.role)||c.stage==='all'||c.stage===stage;
+const stagesOf=c=>c.stages||String(c.stage).split('+');
+const canSee=(c,stage)=>['principal','admin'].includes(c.role)||stagesOf(c).includes('all')||stagesOf(c).includes(stage);
 
 /* ═════════ واجهة الخلفية: محاكاة محلية، أو Apps Script إن وُجد ═════════ */
 const Mock=(()=>{
@@ -147,8 +149,8 @@ const Mock=(()=>{
  const fail=e=>Promise.resolve().then(()=>{throw e});
  return{
   isMock:true,
-  users:()=>DEMO.staff,
-  as(email){ctx=DEMO.staff.find(s=>s.email===email);return wait(ctx);},
+  users:()=>[],
+  as(u){ctx=u;return wait(ctx);},
   me:()=>wait(ctx),
   students(){return wait(DEMO.students.filter(s=>canSee(ctx,s.stage)).map(s=>({...s,status:(db.reports[s.id]||{}).status||'NONE'})));},
   library:()=>wait(DEMO.library),
@@ -196,7 +198,8 @@ setInterval(()=>{const c=document.getElementById('clk');if(c)c.innerHTML=clockHt
 
 /* ───── المتابعة وفاعلية العمل ───── */
 const STG=['primary','middle','secondary'];
-const stagesFor=u=>(['principal','admin'].includes(u.role)||u.stage==='all')?STG:[u.stage];
+const stagesFor=u=>(['principal','admin'].includes(u.role)||stagesOf(u).includes('all'))?STG:stagesOf(u).filter(x=>STG.includes(x));
+const stageLabel=u=>stagesFor(u).length===3?'كل المراحل':stagesFor(u).map(x=>STAGE_AR[x]).join(' + ');
 function agg(stats,stages){const a={total:0,NONE:0,DRAFT:0,SUBMITTED:0,REVIEWED:0,APPROVED:0,PUBLISHED:0};
  stages.forEach(s=>{const x=stats&&stats.stages&&stats.stages[s];if(x)for(const k in a)a[k]+=x[k]||0;});return a;}
 const sent=a=>a.SUBMITTED+a.REVIEWED+a.APPROVED+a.PUBLISHED;
@@ -209,10 +212,10 @@ function badgesFor(u){const a=agg(S.stats,stagesFor(u));
  return[['الطلاب',a.total,'rem']];}
 const todoSt=u=>u.role==='deputy'?['SUBMITTED']:u.role==='principal'?['REVIEWED']:['NONE','DRAFT'];
 function usersBarHtml(){
- if(!B.isMock)return '';
- return '<div class="card"><div class="sub" style="margin-bottom:8px">تجربة بصفة مستخدم آخر — الأرقام بجانب كل مستخدم تتغير مع تقدّم العمل:</div><div class="ub">'+
-  B.users().map(x=>'<button class="uc'+(x.email===S.user.email?' sel':'')+'" data-who="'+x.email+'"><span class="un">'+esc(x.name)+'</span><span class="ur">'+ROLE_AR[x.role]+' · '+STAGE_AR[x.stage]+'</span><span class="pills">'+
-   badgesFor(x).map(b=>'<span class="pl '+b[2]+'"><b>'+b[1]+'</b> '+b[0]+'</span>').join('')+'</span></button>').join('')+'</div></div>';}
+ if(!B.isMock||!['principal','admin'].includes(S.user.role)||!window.TEAM||!window.TEAM.length)return '';
+ return '<div class="card"><div class="sub" style="margin-bottom:8px">فريق العمل — أرقام المتابعة لكل دور (تظهر لك بصفتك مديراً):</div><div class="ub">'+
+  window.TEAM.map(x=>'<div class="uc"><span class="un">'+esc(x.name)+'</span><span class="ur">'+ROLE_AR[x.role]+' · '+stageLabel(x)+'</span><span class="pills">'+
+   badgesFor(x).map(b=>'<span class="pl '+b[2]+'"><b>'+b[1]+'</b> '+b[0]+'</span>').join('')+'</span></div>').join('')+'</div></div>';}
 function dashHtml(){
  const u=S.user,st=stagesFor(u),tot=agg(S.stats,st);
  let msg='';
@@ -223,10 +226,43 @@ function dashHtml(){
  const seg=(a)=>{const t=a.total||1,w=n=>(n/t*100).toFixed(1)+'%';
   return '<div class="sbar" role="img" aria-label="توزيع الحالات"><i style="width:'+w(finOk(a))+';background:#1d4a2c"></i><i style="width:'+w(a.REVIEWED)+';background:#1b6a96"></i><i style="width:'+w(a.SUBMITTED)+';background:#d99a1e"></i><i style="width:'+w(a.DRAFT)+';background:#9fb0bd"></i></div>';};
  const row=(label,a,strong)=>'<tr'+(strong?' class="tot"':'')+'><th scope="row">'+label+'</th><td>'+a.total+'</td><td>'+a.NONE+'</td><td>'+a.DRAFT+'</td><td>'+a.SUBMITTED+'</td><td>'+a.REVIEWED+'</td><td>'+finOk(a)+'</td><td>'+(a.total?Math.round(sent(a)/a.total*100):0)+'%</td><td style="min-width:140px">'+seg(a)+'</td></tr>';
- return '<section class="card dash"><div class="row" style="justify-content:space-between"><h2 style="margin:0;font-size:18px">المتابعة وفاعلية العمل على التقارير</h2><span class="sub">'+STAGE_AR[u.stage]+' · '+ROLE_AR[u.role]+'</span></div>'+
+ return '<section class="card dash"><div class="row" style="justify-content:space-between"><h2 style="margin:0;font-size:18px">المتابعة وفاعلية العمل على التقارير</h2><span class="sub">'+stageLabel(u)+' · '+ROLE_AR[u.role]+'</span></div>'+
   '<p class="dmsg">'+msg+'</p><div class="wrap" style="justify-content:flex-start"><table class="dt"><thead><tr><th>المرحلة</th><th>الطلاب</th><th>لم يبدأ</th><th>مسودة</th><th>بانتظار الوكيل</th><th>بانتظار المدير</th><th>معتمد</th><th>نسبة الإرسال</th><th>التوزيع</th></tr></thead><tbody>'+
   st.map(s=>row(STAGE_AR[s],agg(S.stats,[s]),false)).join('')+(st.length>1?row('الإجمالي',tot,true):'')+'</tbody></table></div>'+
   '<div class="legend"><span><i style="background:#1d4a2c"></i>معتمد</span><span><i style="background:#1b6a96"></i>بانتظار المدير</span><span><i style="background:#d99a1e"></i>بانتظار الوكيل</span><span><i style="background:#9fb0bd"></i>مسودة</span></div></section>';}
+
+
+/* ───── بوابة الدخول (access.txt) ───── */
+const Auth=(()=>{
+ const SK='dfa_sess_v1',TK='dfa_try_v1',TTL=3600e3,MAXT=5,LOCKMS=60e3;let entries=[];
+ const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const sha=async t=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)));
+ const parse=txt=>txt.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&l[0]!=='#').map(l=>{const p=l.split(',');return{u:p[0],secret:p[1],role:p[2],stage:p[3],name:p.slice(4).join(',')||p[0]};}).filter(e=>e.u&&e.secret&&ROLE_AR[e.role]&&e.stage);
+ const mk=e=>({username:e.u,name:e.name,role:e.role,stage:e.stage,stages:e.stage.split('+'),email:e.u+'('+e.role+'/'+e.stage+')'});
+ async function load(){let t='';try{const r=await fetch('access.txt',{cache:'no-store'});if(r.ok)t=await r.text();}catch(e){}
+  if(!t&&window.ACCESS_TXT)t=window.ACCESS_TXT;entries=parse(t);
+  const seen={};window.TEAM=entries.filter(e=>{const k=e.role+'|'+e.stage;if(seen[k])return false;seen[k]=1;return true;}).map(mk);}
+ async function ok(e,pw){if(e.secret.startsWith('sha256:')){const p=e.secret.split(':');return (await sha(p[1]+':'+pw))===p[2];}return e.secret===pw;}
+ const tries=()=>{try{return JSON.parse(localStorage.getItem(TK)||'{}');}catch(x){return {};}};
+ const setT=o=>{try{localStorage.setItem(TK,JSON.stringify(o));}catch(x){}};
+ async function login(u,pw){
+  if(!entries.length)return{err:'تعذّر قراءة ملف الصلاحيات access.txt؛ الدخول مقفل.'};
+  const t=tries();if(t.until&&t.until>Date.now())return{err:'محاولات كثيرة. حاول بعد '+Math.ceil((t.until-Date.now())/1000)+' ثانية.'};
+  for(const e of entries.filter(x=>x.u===u)){if(await ok(e,pw)){setT({});const user=mk(e);try{sessionStorage.setItem(SK,JSON.stringify({user,exp:Date.now()+TTL}));}catch(x){}return{user};}}
+  const n=(t.n||0)+1;setT(n>=MAXT?{until:Date.now()+LOCKMS,n:0}:{n});return{err:'بيانات الدخول غير صحيحة.'};}
+ function session(){try{const o=JSON.parse(sessionStorage.getItem(SK)||'null');if(o&&o.exp>Date.now())return o.user;}catch(e){}return null;}
+ function logout(){try{sessionStorage.removeItem(SK);}catch(e){}location.reload();}
+ return{load,login,session,logout};
+})();
+function showLogin(msg){
+ $('#app').innerHTML='<div class="card" style="max-width:420px;margin:60px auto;display:flex;flex-direction:column;gap:12px;border-top:6px solid #14577a"><div style="display:flex;align-items:center;gap:12px"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:84px;height:70px;object-fit:contain"><div><h1 style="font-size:19px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">العام الدراسي '+esc(DEMO.year)+'هـ · دخول الفريق</div></div></div>'+
+  '<form id="lf" style="display:flex;flex-direction:column;gap:10px"><label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
+  '<label style="font-weight:700">كلمة المرور<input id="lp" type="password" autocomplete="current-password" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
+  '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form>'+
+  '<div class="sub">قفل متصفح تجريبي: يُقرأ من access.txt. لا يحمي بيانات حقيقية.</div></div>';
+ $('#lf').onsubmit=async e=>{e.preventDefault();const r=await Auth.login($('#lu').value.trim(),$('#lp').value);if(r.err){$('#lerr').textContent=r.err;return;}location.reload();};
+ $('#lu').focus();
+}
 
 const norm=s=>s.replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
 const classes=()=>[...new Set(S.students.map(s=>s.class))];
@@ -234,7 +270,7 @@ const curStudent=()=>S.students.find(s=>s.id===S.cur);
 function say(t,k){S.msg=t;S.msgKind=k||'';const m=$('#msg');if(m){m.textContent=t;m.className=k||'';}}
 
 async function boot(){
- if(B.isMock){await B.as(B.users()[0].email);}
+ if(B.isMock){await Auth.load();const s0=Auth.session();if(!s0){showLogin();return;}await B.as(s0);}
  await loadAll();
  S.cls=classes()[0];
  render();
@@ -315,7 +351,7 @@ function render(){
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
  "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي · "+(B.isMock?"نسخة تجريبية (بيانات افتراضية، محاكاة محلية)":"متصل بالشيت")+"</div>"+
  "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
- "<div class=\"ctl\">"+(B.isMock?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+STAGE_AR[u.stage]+"</span></div></div>"+
+ "<div class=\"ctl\">"+(B.isMock?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  usersBarHtml()+dashHtml()+
  '<div class="cols">'+
@@ -350,7 +386,7 @@ function bind(){
  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  const r=$('#reason');if(r)r.oninput=()=>{S.reason=r.value;};
  const q=$('#q');if(q)q.oninput=()=>{S.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};
- app.querySelectorAll('[data-who]').forEach(b=>b.onclick=()=>switchUser(b.dataset.who));
+ const lo=$('#logout');if(lo)lo.onclick=Auth.logout;
  app.querySelectorAll('[data-flt]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.flt;render();});
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
