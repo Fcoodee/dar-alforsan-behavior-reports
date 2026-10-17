@@ -67,6 +67,8 @@ header.hero>*{position:relative}header.hero>.emb{position:absolute}
 .hero .sub2{font-size:14.5px;color:#d6ecf7}
 .hero .prog{display:flex;flex-direction:column;gap:8px;min-width:260px;flex:0 1 340px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 16px}
 .hero .prog .bar{background:rgba(255,255,255,.28)}.hero .prog .bar i{background:#bfe6f7}
+.hero .clk{display:flex;flex-wrap:wrap;gap:8px 10px;font-size:13.5px}
+.hero .clk span{background:rgba(0,0,0,.22);border-radius:8px;padding:4px 12px}
 .hero .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .hero .ctl .badge{background:rgba(255,255,255,.2);color:#fff}
 .hero .ctl select,.hero .ctl .btn{color:var(--ink)}
@@ -173,6 +175,9 @@ const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',p
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const L=c=>'<bdi dir="ltr">'+esc(c)+'</bdi>';
+const fmtDate=(loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'Asia/Riyadh'},o)).format(new Date());}catch(e){return '';}};
+function clockHtml(){return '<span>'+fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</span><span>الموافق '+fmtDate('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'})+'م</span><span style="font-weight:800">'+fmtDate('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',hour12:true})+'</span>';}
+setInterval(()=>{const c=document.getElementById('clk');if(c)c.innerHTML=clockHtml();},20000);
 const norm=s=>s.replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
 const classes=()=>[...new Set(S.students.map(s=>s.class))];
 const curStudent=()=>S.students.find(s=>s.id===S.cur);
@@ -258,6 +263,7 @@ function render(){
  $('#app').innerHTML=
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
  "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي · "+(B.isMock?"نسخة تجريبية (بيانات افتراضية، محاكاة محلية)":"متصل بالشيت")+"</div>"+
+ "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
  "<div class=\"ctl\">"+(B.isMock?"<label>تجربة بصفة <select id=\"who\" style=\"min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px\">"+users.map(x=>"<option value=\""+x.email+"\""+(x.email===u.email?" selected":"")+">"+esc(x.name)+" — "+ROLE_AR[x.role]+"</option>").join("")+"</select></label><button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+STAGE_AR[u.stage]+"</span></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  '<div class="cols">'+
