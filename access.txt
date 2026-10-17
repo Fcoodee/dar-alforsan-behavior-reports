@@ -3,7 +3,8 @@
 # يُولَّد بـ tools/make-access.js. لا تضع كلمات مرور صريحة هنا.
 # ⚠ قفل متصفح لا خادم: أي زائر يستطيع تنزيل هذا الملف. لا يصلح لحماية بيانات حقيقية.
 
-dar0,pbkdf2:150000:6adc5c275f3255e6:05f6a23bd8f990c0bacf923f5b5db6104d4c31fa17a50e5669a08acc95cd8cf5,counselor,primary,موجه المرحلة الابتدائية
-admin,pbkdf2:150000:9ffa3ea6bdf7c21f:eafc6e0d9007aa8e94ce2d6cbfd379ed3d9d8c78cfe4d9ba6298f496e772f3eb,deputy,primary,وكيل شؤون الطلاب — الابتدائي
-admin,pbkdf2:150000:16ccc15421c41ffa:7e68d3808dbe73e4ed0361ff6de69da5541eddfec796f8e78d6a01c57a4fe98a,deputy,middle+secondary,وكيل شؤون الطلاب — المتوسط والثانوي
-admin,pbkdf2:150000:870b21bfba4140cb:5dc6ae0189b4d6c508cd123573d2bfe4680e6a5ddfc88ec79957a52a34b400b6,principal,all,مدير المدرسة
+dar0,pbkdf2:150000:a549eeafe1f5f9ff:6e8e76f38e5daeecfa2a4b1fb3f23d1dd6db1b705fa63ad244d502fc9f9c3f22,counselor,primary,موجه المرحلة الابتدائية
+dar1,pbkdf2:150000:e6ce941dbaeb0d2a:1e62fab3c538a89122a0c9ff022cc989eafc09a7f83369d9c40977601d0b441b,counselor,middle+secondary,موجه المرحلة المتوسطة والثانوية
+dep0,pbkdf2:150000:359cd87e6262232b:25216f151a5ff745a565ef36f362686613c809bd93c523a06c3c6a7312edbbbe,deputy,primary,وكيل شؤون الطلاب — الابتدائي
+dep1,pbkdf2:150000:847ef366ad58a11c:a6b7da5467bc3e0f790306767f13361363f91d5ed296d874987fd5c8d3f3bffb,deputy,middle+secondary,وكيل شؤون الطلاب — المتوسط والثانوي
+mgr,pbkdf2:150000:09d09b8a9df2a13e:02b57810594cef59a9dc2bc744e775ba5c5510b35259e1a83ffc3b3ac739f616,principal,all,مدير المدرسة

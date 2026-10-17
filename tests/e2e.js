@@ -21,23 +21,27 @@ async function suite(b,url,tag){
  await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل',tag+' الموجه يرسل للوكيل');
  ok((await p.textContent('.hero .pl.ok b'))==='1',tag+' شارة الموجه بجانب اسمه: أُرسل 1');
- // وكيل الابتدائي (admin/admin48)
- await relog(p,url,'admin','admin48');
- ok((await p.textContent('.hero')).includes('الابتدائي')&&!(await p.textContent('.hero .badge')).includes('المتوسط'),tag+' admin/admin48 وكيل الابتدائي');
+ // وكيل الابتدائي (dep0/admin48)
+ await relog(p,url,'dep0','admin48');
+ ok((await p.textContent('.hero')).includes('الابتدائي')&&!(await p.textContent('.hero .badge')).includes('المتوسط'),tag+' dep0/admin48 وكيل الابتدائي');
  ok((await p.textContent('.hero .pl.act b'))==='1',tag+' شارة الوكيل: بانتظارك 1');
  await p.click('[data-flt=todo]');await p.waitForTimeout(200);
  ok((await p.$$eval('[data-stu]',e=>e.length))===1,tag+' فلتر «بانتظار إجرائي» يعرض تقريراً واحداً');
  await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);
  ok(await p.$('[data-go=APPROVED]')===null,tag+' الوكيل لا يعتمد نهائياً');
  await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
- // نفس اسم المستخدم admin بكلمة مرور أخرى = وكيل المتوسط والثانوي
- await relog(p,url,'admin','admin148');
+ // موجه المتوسط والثانوي (dar1)
+ await relog(p,url,'dar1','كلمة مرور');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===8,tag+' dar1 موجه المتوسط والثانوي يرى 8 فصول');
+ ok(await p.$('.ub')===null,tag+' موجه المتوسط لا يرى شريط الفريق');
+ // وكيل المتوسط والثانوي
+ await relog(p,url,'dep1','admin148');
  const cl=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));
- ok(cl.length===8&&cl.every(c=>c.includes('م')||c.includes('ث')),tag+' admin/admin148 وكيل المتوسط والثانوي: يرى 8 فصول');
+ ok(cl.length===8&&cl.every(c=>c.includes('م')||c.includes('ث')),tag+' dep1/admin148 وكيل المتوسط والثانوي: يرى 8 فصول');
  ok((await p.textContent('.hero .pl.act b'))==='0',tag+' وكيل المتوسط: بانتظارك 0');
  const stagesRows=await p.$$eval('.dt tbody tr',e=>e.length);ok(stagesRows===3,tag+' جدول المتابعة: المتوسط والثانوي + إجمالي');
  // المدير
- await relog(p,url,'admin','min');
+ await relog(p,url,'mgr','min');
  ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' المدير يرى 19 فصلاً');
  ok(await p.$('.ub')!==null,tag+' المدير يرى شريط الفريق');
  await p.click('[data-flt=todo]');await p.waitForTimeout(200);
@@ -47,6 +51,9 @@ async function suite(b,url,tag){
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
  await p.click('#audit').catch(()=>{});
+ // معرّف مشترك قديم لم يعد مقبولاً
+ await p.evaluate(()=>{sessionStorage.clear();localStorage.removeItem('dfa_try_v1');});await p.goto(url);await p.waitForSelector('#lf');
+ await login(p,'admin','min');ok((await p.textContent('#lerr')).includes('غير صحيحة'),tag+' المعرّف المشترك admin لم يعد يعمل');
  // قفل المحاولات
  await p.evaluate(()=>{sessionStorage.clear();localStorage.removeItem('dfa_try_v1');});await p.goto(url);await p.waitForSelector('#lf');
  for(let i=0;i<5;i++){await login(p,'dar0','x'+i);}
@@ -56,7 +63,7 @@ async function suite(b,url,tag){
 }
 (async()=>{
  const txt=fs.readFileSync(path.join(root,'access.txt'),'utf8');
- ok(!/,(048|admin48|admin148|min),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
+ ok(!/,(048|admin48|admin148|min|كلمة مرور),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
  const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined});
  await suite(b,'file://'+path.join(root,'index.html'),'[file]');
  const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http]');srv.close();
