@@ -1,0 +1,12 @@
+# Pages: لا تُنشر المصادر والأدوات والوثائق؛ يُنشر التطبيق المبني فقط (index.html وملفاته).
+exclude:
+  - _src
+  - tools
+  - tests
+  - apps-script
+  - design
+  - docs
+  - README.md
+  - CLAUDE.md
+  - package.json
+  - node_modules

@@ -10,3 +10,5 @@ data/
 shot*.png
 out.pdf
 resp-*.png
+node_modules/
+package-lock.json

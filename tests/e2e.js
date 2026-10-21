@@ -78,13 +78,25 @@ async function dd(b,url,tag){
  await p.goto(url);await p.waitForSelector('#lf');
  ok(await p.$('#lu')===null&&await p.$('#lp')===null,tag+' لا حقول اسم مستخدم/كلمة مرور في وضع القائمة');
  const opts=await p.$$eval('#lr option',e=>e.map(x=>x.textContent));
- ok(JSON.stringify(opts)===JSON.stringify(['الموجه','الوكيل','المدير','مدير النظام']),tag+' خيارات القائمة: '+opts.join('، '));
+ ok(JSON.stringify(opts)===JSON.stringify(['الموجه الطلابي','وكيل شؤون الطلاب','مدير المدرسة','مدير النظام 🔒']),tag+' خيارات القائمة: '+opts.join('، '));
  await p.selectOption('#lr','principal');ok(!(await p.isVisible('#ls')),tag+' المرحلة تختفي للمدير');
  await p.selectOption('#lr','counselor');ok(await p.isVisible('#ls'),tag+' المرحلة تظهر للموجه');
  ok((await p.textContent('#lf button'))==='تسجيل الدخول',tag+' زر «تسجيل الدخول»');
+ ok(!(await p.isVisible('#au')),tag+' حقول التصريح مخفية لغير مدير النظام');
+ await p.selectOption('#lr','admin');
+ ok(await p.isVisible('#au')&&await p.isVisible('#ap')&&!(await p.isVisible('#ls')),tag+' اختيار مدير النظام يطلب المعرّف وكلمة المرور ويخفي المرحلة');
+ await p.fill('#au','syseng');await p.fill('#ap','خطأ');await p.click('#lf button');await p.waitForTimeout(500);
+ ok((await p.textContent('#lerr')).includes('غير صحيحة')&&await p.isVisible('#lf'),tag+' كلمة مرور خاطئة لمدير النظام ترفض');
+ await p.fill('#au','dar0');await p.fill('#ap','048');await p.click('#lf button');await p.waitForTimeout(500);
+ ok((await p.textContent('#lerr')).includes('غير صحيحة'),tag+' حساب موجه لا يدخل من بوابة مدير النظام');
+ await p.selectOption('#lr','counselor');
+ // منع التحديد والنسخ لغير مدير النظام
+ await p.selectOption('#lr','counselor');
  // الموجه (متوسط)
  await pick_(p,'counselor','middle');
  ok((await p.$$eval('[data-cls]',e=>e.length))===6,tag+' الموجه (متوسط) يرى 6 فصول فقط');
+ const guard=async(want)=>p.evaluate(()=>{const el=document.querySelector('.sheet');const mk=t=>{const e=new Event(t,{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented;};const k=new KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true,cancelable:true});el.dispatchEvent(k);return{us:getComputedStyle(el).userSelect,copy:mk('copy'),ctx:mk('contextmenu'),sel:mk('selectstart'),key:k.defaultPrevented};});
+ let g=await guard();ok(g.us==='none'&&g.copy&&g.ctx&&g.sel&&g.key,tag+' غير المدير: التحديد والنسخ وقائمة الزر الأيمن واختصار Ctrl+C كلها ممنوعة '+JSON.stringify(g));
  ok(await p.$('.ub')===null&&await p.$('#reset')===null&&await p.$('#audit')===null,tag+' الموجه لا يرى أدوات المدير/المهندس');
  // إرسال تقرير من الابتدائي
  await p.click('#logout');await p.waitForSelector('#lf');
@@ -104,7 +116,9 @@ async function dd(b,url,tag){
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
  await p.click('#logout');await p.waitForSelector('#lf');
- await pick_(p,'admin');ok(await p.$('#reset')!==null&&await p.$('#audit')!==null&&(await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' مدير النظام: التصفير وسجل التدقيق وملاحظات الصيانة');
+ await p.selectOption('#lr','admin');await p.fill('#au','syseng');await p.fill('#ap','eng');await p.click('#lf button');await p.waitForSelector('.hero');await p.waitForTimeout(400);
+ g=await guard();ok(g.us!=='none'&&!g.copy&&!g.ctx&&!g.sel&&!g.key,tag+' مدير النظام وحده يحدّد وينسخ '+JSON.stringify(g));
+ ok(await p.$('#reset')!==null&&await p.$('#audit')!==null&&(await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' مدير النظام: التصفير وسجل التدقيق وملاحظات الصيانة');
  ok(errs.filter(e=>!/ERR_TUNNEL|fonts/.test(e)).length===0,tag+' لا أخطاء JavaScript '+JSON.stringify(errs));
  await ctx.close();
 }
