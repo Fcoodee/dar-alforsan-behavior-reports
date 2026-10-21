@@ -281,14 +281,22 @@ function dashHtml(){
   '<div class="legend"><span><i style="background:#1d4a2c"></i>معتمد</span><span><i style="background:#1b6a96"></i>بانتظار المدير</span><span><i style="background:#d99a1e"></i>بانتظار الوكيل</span><span><i style="background:#9fb0bd"></i>مسودة</span></div></section>';}
 
 
-/* ───── بوابة الدخول (access.txt) ───── */
+/* ───── بوابة الدخول ─────
+   LOGIN_MODE='dropdown': اختيار نوع المستخدم من قائمة (مجمَّد الدخول بكلمات المرور مؤقتاً).
+   LOGIN_MODE='password': الدخول بملف access.txt (يُفعَّل بالرابط ?auth=password أو بتغيير الثابت). */
+const LOGIN_MODE=/[?&]auth=password/.test(location.search)?'password':'dropdown';
+const DEMO_ROLES=[['counselor','الموجه',true],['deputy','الوكيل',true],['principal','المدير',false],['admin','مدير النظام',false]];
+const DEMO_NAME={counselor:'الموجه الطلابي',deputy:'وكيل شؤون الطلاب',principal:'مدير المدرسة',admin:'مهندس النظام'};
 const Auth=(()=>{
  const SK='dfa_sess_v1',TK='dfa_try_v1',TTL=3600e3,MAXT=5,LOCKMS=60e3;let entries=[];
  const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
  const sha=async t=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)));
  const parse=txt=>txt.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&l[0]!=='#').map(l=>{const p=l.split(',');return{u:p[0],secret:p[1],role:p[2],stage:p[3],name:p.slice(4).join(',')||p[0]};}).filter(e=>e.u&&e.secret&&ROLE_AR[e.role]&&e.stage);
+ const mkDemo=(role,stage)=>({username:'demo-'+role,name:DEMO_NAME[role]+(['counselor','deputy'].includes(role)?' — '+STAGE_AR[stage]:''),role,stage,stages:[stage],email:'demo-'+role+'/'+stage});
  const mk=e=>({username:e.u,name:e.name,role:e.role,stage:e.stage,stages:e.stage.split('+'),email:e.u+'('+e.role+'/'+e.stage+')'});
- async function load(){let t='';try{const r=await fetch('access.txt',{cache:'no-store'});if(r.ok)t=await r.text();}catch(e){}
+ async function load(){
+  if(LOGIN_MODE==='dropdown'){window.TEAM=[];['counselor','deputy'].forEach(r=>STG.forEach(st=>window.TEAM.push(mkDemo(r,st))));window.TEAM.push(mkDemo('principal','all'),mkDemo('admin','all'));return;}
+  let t='';try{const r=await fetch('access.txt',{cache:'no-store'});if(r.ok)t=await r.text();}catch(e){}
   if(!t&&window.ACCESS_TXT)t=window.ACCESS_TXT;entries=parse(t);
   const seen={};window.TEAM=entries.filter(e=>{const k=e.role+'|'+e.stage;if(seen[k])return false;seen[k]=1;return true;}).map(mk);}
  async function pbk(pw,salt,it){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:new TextEncoder().encode(salt),iterations:it},k,256));}
@@ -303,7 +311,8 @@ const Auth=(()=>{
   const n=(t.n||0)+1;setT(n>=MAXT?{until:Date.now()+LOCKMS,n:0}:{n});return{err:'بيانات الدخول غير صحيحة.'};}
  function session(){try{const o=JSON.parse(sessionStorage.getItem(SK)||'null');if(o&&o.exp>Date.now())return o.user;}catch(e){}return null;}
  function logout(){try{sessionStorage.removeItem(SK);}catch(e){}location.reload();}
- return{load,login,session,logout};
+ function loginAs(role,stage){const st=['counselor','deputy'].includes(role)?stage:'all';const user=mkDemo(role,st);try{sessionStorage.setItem(SK,JSON.stringify({user,exp:Date.now()+TTL}));}catch(x){}return user;}
+ return{load,login,loginAs,session,logout};
 })();
 function showLogin(msg){
  const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
@@ -313,12 +322,26 @@ function showLogin(msg){
   role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
   role('وكيل شؤون الطلاب','يستلم التقارير المرسلة من مرحلته ويراجعها ويعتمدها، أو يعيدها للموجه.',['#fbecc8','#5c4306'])+
   role('مدير المدرسة','يراجع ويعتمد نهائياً أو يعيد للمسودة بسبب، ويتابع سير العمل في كل المراحل.',['#d6e6f4','#123a5c'])+
-  '</div><form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
+  '</div>'+(LOGIN_MODE==='dropdown'?
+  '<form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
+  '<label style="font-weight:700">نوع المستخدم<select id="lr" style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 10px;font-weight:400;background:#fff">'+DEMO_ROLES.map(r=>'<option value="'+r[0]+'">'+r[1]+'</option>').join('')+'</select></label>'+
+  '<label id="lsw" style="font-weight:700">المرحلة<select id="ls" style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 10px;font-weight:400;background:#fff">'+STG.map(x=>'<option value="'+x+'">'+STAGE_AR[x]+'</option>').join('')+'</select></label>'+
+  '<button class="btn pri" type="submit">تسجيل الدخول</button></form>'
+  :
+  '<form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
   '<label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
   '<label style="font-weight:700">كلمة المرور<input id="lp" type="password" autocomplete="current-password" required style="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
-  '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form></div>';
- $('#lf').onsubmit=async e=>{e.preventDefault();const r=await Auth.login($('#lu').value.trim(),$('#lp').value);if(r.err){$('#lerr').textContent=r.err;return;}location.reload();};
- $('#lu').focus();
+  '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form>'
+  )+'</div>';
+ if(LOGIN_MODE==='dropdown'){
+  const sync=()=>{$('#lsw').style.display=DEMO_ROLES.find(r=>r[0]===$('#lr').value)[2]?'':'none';};
+  $('#lr').onchange=sync;sync();
+  $('#lf').onsubmit=e=>{e.preventDefault();Auth.loginAs($('#lr').value,$('#ls').value);location.reload();};
+  $('#lr').focus();
+ }else{
+  $('#lf').onsubmit=async e=>{e.preventDefault();const r=await Auth.login($('#lu').value.trim(),$('#lp').value);if(r.err){$('#lerr').textContent=r.err;return;}location.reload();};
+  $('#lu').focus();
+ }
 }
 
 function openDlg(d){try{if(d.showModal)d.showModal();else d.setAttribute('open','');}catch(e){d.setAttribute('open','');}}

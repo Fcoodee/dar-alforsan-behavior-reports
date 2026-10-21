@@ -10,9 +10,9 @@ const SIZES=[['حاسوب 1440',{width:1440,height:900}],['حاسوب محمول
   const p=await ctx.newPage();await p.goto(url);await p.waitForSelector('#lf');
   const ov=async()=>p.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   ok((await ov())<=1,name+' · شاشة الدخول بلا تمرير أفقي');
-  if(vp.width<768){const fs=await p.$eval('#lu',e=>parseFloat(getComputedStyle(e).fontSize));ok(fs>=16,name+' · حقل الدخول 16px فأكثر (يمنع تكبير iOS) = '+fs);}
+  if(vp.width<768){const fs=await p.$eval('#lr',e=>parseFloat(getComputedStyle(e).fontSize));ok(fs>=16,name+' · حقل الدخول 16px فأكثر (يمنع تكبير iOS) = '+fs);}
   await p.screenshot({path:'resp-login-'+vp.width+'.png'});
-  await p.fill('#lu','mgr');await p.fill('#lp','min');await p.click('#lf button');await p.waitForSelector('.hero');await p.waitForTimeout(500);
+  await p.selectOption('#lr','principal');await p.click('#lf button');await p.waitForSelector('.hero');await p.waitForTimeout(500);
   ok((await ov())<=1,name+' · الصفحة الرئيسية بلا تمرير أفقي ('+await ov()+')');
   const g=await p.evaluate(()=>{const r=document.querySelector('.scaled').getBoundingClientRect(),w=document.querySelector('#pw').getBoundingClientRect();return{sw:r.width,ww:w.width,sc:getComputedStyle(document.documentElement).getPropertyValue('--sc')};});
   ok(g.sw<=g.ww+1,name+' · معاينة A4 تتسع للحاوية ('+Math.round(g.sw)+' ≤ '+Math.round(g.ww)+'، مقياس '+g.sc.trim()+')');

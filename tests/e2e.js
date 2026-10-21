@@ -70,12 +70,52 @@ async function suite(b,url,tag){
  ok(errs.filter(e=>!/ERR_TUNNEL|fonts/.test(e)).length===0,tag+' لا أخطاء JavaScript '+JSON.stringify(errs));
  await ctx.close();
 }
+
+// الدخول الحالي: قائمة منسدلة لنوع المستخدم (كلمات المرور مجمّدة)
+async function pick_(p,role,stage){await p.selectOption('#lr',role);if(stage)await p.selectOption('#ls',stage);await p.click('#lf button');await p.waitForSelector('.hero');await p.waitForTimeout(400);}
+async function dd(b,url,tag){
+ const ctx=await b.newContext({viewport:{width:1440,height:1100}});const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto(url);await p.waitForSelector('#lf');
+ ok(await p.$('#lu')===null&&await p.$('#lp')===null,tag+' لا حقول اسم مستخدم/كلمة مرور في وضع القائمة');
+ const opts=await p.$$eval('#lr option',e=>e.map(x=>x.textContent));
+ ok(JSON.stringify(opts)===JSON.stringify(['الموجه','الوكيل','المدير','مدير النظام']),tag+' خيارات القائمة: '+opts.join('، '));
+ await p.selectOption('#lr','principal');ok(!(await p.isVisible('#ls')),tag+' المرحلة تختفي للمدير');
+ await p.selectOption('#lr','counselor');ok(await p.isVisible('#ls'),tag+' المرحلة تظهر للموجه');
+ ok((await p.textContent('#lf button'))==='تسجيل الدخول',tag+' زر «تسجيل الدخول»');
+ // الموجه (متوسط)
+ await pick_(p,'counselor','middle');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===6,tag+' الموجه (متوسط) يرى 6 فصول فقط');
+ ok(await p.$('.ub')===null&&await p.$('#reset')===null&&await p.$('#audit')===null,tag+' الموجه لا يرى أدوات المدير/المهندس');
+ // إرسال تقرير من الابتدائي
+ await p.click('#logout');await p.waitForSelector('#lf');
+ await pick_(p,'counselor','primary');
+ await p.evaluate(async()=>{await pick('S-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
+ await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
+ ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل',tag+' الموجه يرسل للوكيل');
+ await p.click('#logout');await p.waitForSelector('#lf');
+ await pick_(p,'deputy','middle');ok((await p.textContent('.hero .pl.act b'))==='0',tag+' وكيل المتوسط: بانتظارك 0');
+ await p.click('#logout');await p.waitForSelector('#lf');
+ await pick_(p,'deputy','primary');ok((await p.textContent('.hero .pl.act b'))==='1',tag+' وكيل الابتدائي: بانتظارك 1');
+ await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
+ await p.click('#logout');await p.waitForSelector('#lf');
+ await pick_(p,'principal');ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' المدير يرى 19 فصلاً');
+ ok(await p.$('.ub')!==null&&await p.$('#audit')!==null&&await p.$('#reset')===null,tag+' المدير: شريط الفريق وسجل التدقيق دون التصفير');
+ await p.click('[data-flt=todo]');await p.waitForTimeout(200);await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);
+ await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
+ ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
+ await p.click('#logout');await p.waitForSelector('#lf');
+ await pick_(p,'admin');ok(await p.$('#reset')!==null&&await p.$('#audit')!==null&&(await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' مدير النظام: التصفير وسجل التدقيق وملاحظات الصيانة');
+ ok(errs.filter(e=>!/ERR_TUNNEL|fonts/.test(e)).length===0,tag+' لا أخطاء JavaScript '+JSON.stringify(errs));
+ await ctx.close();
+}
 (async()=>{
  const txt=fs.readFileSync(path.join(root,'access.txt'),'utf8');
  ok(!/,(048|admin48|admin148|min|eng|كلمة مرور),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
  const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined});
- await suite(b,'file://'+path.join(root,'index.html'),'[file]');
- const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http]');srv.close();
+ await suite(b,'file://'+path.join(root,'index.html')+'?auth=password','[file·كلمة مرور]');
+ await dd(b,'file://'+path.join(root,'index.html'),'[file·قائمة]');
+ const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html?auth=password','[http·كلمة مرور]');
+ await dd(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http·قائمة]');srv.close();
  console.log(out.join('\n'));
  await b.close();process.exit(out.some(x=>x.startsWith('فشل'))?1:0);
 })().catch(e=>{console.log(out.join('\n'));console.log('ERR',e.message);process.exit(1)});
