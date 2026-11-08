@@ -77,6 +77,13 @@ async function dd(b,url,tag){
  const ctx=await b.newContext({viewport:{width:1440,height:1100}});const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.goto(url);await p.waitForSelector('#lf');
  ok(await p.$('#lu')===null&&await p.$('#lp')===null,tag+' لا حقول اسم مستخدم/كلمة مرور في وضع القائمة');
+ const nt=await p.textContent('.notice');
+ ok(nt.includes('جارٍ تهيئة قاعدة بيانات الطلاب للأقسام')&&nt.includes('القسم الأهلي')&&nt.includes('قسم الدبلوما')&&nt.includes('قسم التربية الخاصة')&&nt.includes('08-11-2026'),tag+' مربع الإعلام: التهيئة والأقسام الثلاثة وتاريخ البدء');
+ ok((await p.$eval('.ind i',e=>getComputedStyle(e).animationName))!=='none'&&(await p.$eval('.ind',e=>e.getAttribute('role')))==='progressbar',tag+' شريط التقدم متحرك بلا توقف');
+ const x1=await p.$eval('.ind i',e=>e.getBoundingClientRect().left);await p.waitForTimeout(400);const x2=await p.$eval('.ind i',e=>e.getBoundingClientRect().left);
+ ok(x1!==x2,tag+' الشريط يتحرك فعلاً ('+Math.round(x1)+'→'+Math.round(x2)+')');
+ const bar=async()=>p.$eval('#clk',e=>{const r=e.getBoundingClientRect();return{pos:getComputedStyle(e).position,vis:r.bottom<=innerHeight+1&&r.top>0,txt:e.textContent};});
+ let cb=await bar();ok(cb.pos==='fixed'&&cb.vis&&/جمادى|ربيع|محرم|صفر|رجب|شعبان|رمضان|شوال|ذو/.test(cb.txt)&&/\d{4}/.test(cb.txt)&&/[:٠-٩\d]+:\d\d/.test(cb.txt),tag+' شريط التاريخ والوقت ثابت في صفحة الدخول: '+cb.txt.slice(0,60));
  const opts=await p.$$eval('#lr option',e=>e.map(x=>x.textContent));
  ok(JSON.stringify(opts)===JSON.stringify(['الموجه الطلابي','وكيل شؤون الطلاب','مدير المدرسة','مدير النظام 🔒']),tag+' خيارات القائمة: '+opts.join('، '));
  await p.selectOption('#lr','principal');ok(!(await p.isVisible('#ls')),tag+' المرحلة تختفي للمدير');
@@ -95,6 +102,7 @@ async function dd(b,url,tag){
  // الموجه (متوسط)
  await pick_(p,'counselor','middle');
  ok((await p.$$eval('[data-cls]',e=>e.length))===6,tag+' الموجه (متوسط) يرى 6 فصول فقط');
+ cb=await bar();ok(cb.pos==='fixed'&&cb.vis&&await p.$$eval('#clk',e=>e.length)===1,tag+' شريط التاريخ والوقت ثابت أيضاً في الصفحة الرئيسية ولا يتكرر');
  const guard=async(want)=>p.evaluate(()=>{const el=document.querySelector('.sheet');const mk=t=>{const e=new Event(t,{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented;};const k=new KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true,cancelable:true});el.dispatchEvent(k);return{us:getComputedStyle(el).userSelect,copy:mk('copy'),ctx:mk('contextmenu'),sel:mk('selectstart'),key:k.defaultPrevented};});
  let g=await guard();ok(g.us==='none'&&g.copy&&g.ctx&&g.sel&&g.key,tag+' غير المدير: التحديد والنسخ وقائمة الزر الأيمن واختصار Ctrl+C كلها ممنوعة '+JSON.stringify(g));
  ok(await p.$('.ub')===null&&await p.$('#reset')===null&&await p.$('#audit')===null,tag+' الموجه لا يرى أدوات المدير/المهندس');

@@ -129,6 +129,24 @@ header.hero>*{position:relative}header.hero>.emb{position:absolute}
 
 html.nc,html.nc *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html.nc input,html.nc textarea,html.nc select{-webkit-user-select:text;user-select:text}
+
+.clkbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#14577a;color:#fff;display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center;align-items:center;padding:6px 12px;padding-bottom:calc(6px + env(safe-area-inset-bottom));font-size:13px;box-shadow:0 -2px 8px rgba(0,0,0,.2)}
+.clkbar span{white-space:nowrap}.clkbar span:last-child{font-weight:800}
+body{padding-bottom:52px}
+.notice{flex:1 1 100%;background:#fff7e6;border:1px solid #e3cf9a;border-right:6px solid #d99a1e;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.nt-top{display:flex;gap:12px;align-items:center}
+.nt-ic{color:#5c4306;display:flex;animation:ntpulse 1.6s ease-in-out infinite}
+.nt-h{font-weight:800;font-size:16px;color:#5c4306}.nt-s{font-size:13px;color:#6b5a2a}
+.ind{position:relative;height:10px;border-radius:5px;background:#f0e1b8;overflow:hidden}
+.ind i{position:absolute;top:0;bottom:0;left:-35%;width:35%;border-radius:5px;background:#d99a1e;animation:ntind 1.3s linear infinite}
+@keyframes ntind{0%{left:-35%}100%{left:100%}}
+@keyframes ntpulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nt-d{display:flex;flex-wrap:wrap;gap:8px}.nt-d span{background:#fff;border:1px solid #e3cf9a;border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px;color:#5c4306}
+.nt-date{font-size:13.5px;color:#5c4306}
+@media (prefers-reduced-motion:reduce){.ind i{animation-duration:3.2s}.nt-ic{animation:none}}
+@media (max-width:767px){.clkbar{font-size:12px;gap:2px 10px}body{padding-bottom:64px}}
+@media print{.clkbar{display:none!important}}
+
 /* ───── التقرير A4 ───── */
 .sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{position:relative;width:794px;height:1123px;overflow:hidden;background:#fff;font-family:'Tajawal','Segoe UI','SF Arabic','Noto Sans Arabic',Roboto,'Helvetica Neue',Tahoma,sans-serif;color:#16222d}
@@ -317,6 +335,7 @@ const Auth=(()=>{
  return{load,login,loginAs,session,logout};
 })();
 function showLogin(msg){
+ const NOTICE='<div class="notice" role="status" aria-live="polite"><div class="nt-top"><span class="nt-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><div><div class="nt-h">جارٍ تهيئة قاعدة بيانات الطلاب للأقسام</div><div class="nt-s">قواعد بيانات النظام قيد العمل حالياً</div></div></div><div class="ind" role="progressbar" aria-busy="true" aria-label="جارٍ التهيئة"><i></i></div><div class="nt-d"><span>القسم الأهلي</span><span>قسم الدبلوما</span><span>قسم التربية الخاصة</span></div><div class="nt-date">بدأ العمل بتاريخ <b dir="ltr">08-11-2026</b></div></div>';
  const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
  const IN="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400;background:#fff";
  const dropForm='<form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
@@ -330,7 +349,7 @@ function showLogin(msg){
   '<label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="'+IN+'"></label>'+
   '<label style="font-weight:700">كلمة المرور<input id="lp" type="password" autocomplete="current-password" required style="'+IN+'"></label>'+
   '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form>';
- $('#app').innerHTML='<div class="card lg"><div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
+ $('#app').innerHTML='<div class="card lg">'+NOTICE+'<div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
   '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب القسم الأهلي (الابتدائي والمتوسط والثانوي) ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+
   '<div class="lg-h">المستخدمون ومهامهم</div>'+
   role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
@@ -366,6 +385,7 @@ const Guard=(()=>{
  return{set};
 })();
 
+(function(){const d=document.createElement('div');d.id='clk';d.className='clkbar';d.setAttribute('aria-label','التاريخ والوقت');d.innerHTML=clockHtml();document.body.appendChild(d);})();
 const norm=s=>s.replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
 const classes=()=>[...new Set(S.students.map(s=>s.class))];
 const curStudent=()=>S.students.find(s=>s.id===S.cur);
@@ -452,7 +472,6 @@ function render(){
  $('#app').innerHTML=
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
  "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
- "<div class=\"clk\" id=\"clk\">"+clockHtml()+"</div>"+
  "<div class=\"ctl\">"+(B.isMock&&u.role==="admin"?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  usersBarHtml()+dashHtml()+maintHtml()+
