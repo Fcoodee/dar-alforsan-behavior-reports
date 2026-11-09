@@ -250,7 +250,7 @@ const Mock=(()=>{
 const API_URL='';
 const remoteCall=async(fn,...a)=>{
  let r;try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args:a})});}
- catch(e){throw new Error('تعذر الاتصال بالخادم. تحقق من الاتصال وحاول مجدداً.');}
+ catch(e){throw new Error('تعذر الاتصال بالخادم. تحقق من الاتصال، وأن وصول نشر Apps Script هو «أي شخص» بلا تسجيل Google.');}
  let j;try{j=await r.json();}catch(e){throw new Error('استجابة غير صالحة من الخادم.');}
  if(!j.ok)throw new Error(j.error||'خطأ في الخادم.');return j.value;};
 const gasCall=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
