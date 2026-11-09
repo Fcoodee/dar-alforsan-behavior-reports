@@ -283,6 +283,60 @@ function audit_(email, action, target, detail) {
   appendObj_('Audit', { ts: new Date(), email: email, action: action, target: target, detail: detail || '' });
 }
 
+
+/* ───────────── فحص الإعداد (آمن: لا يطبع بريداً ولا اسم طالب) ───────────── */
+
+/**
+ * شغّل checkSetup() بعد ملء Staff وقبل selfTest. يفحص صيغة الأوراق ويطبع في السجل «سليم / راجع / تنبيه»
+ * بأرقام الصفوف وأعدادها فقط، فيمكن إرسال السجل لمهندس النظام دون كشف بيانات.
+ */
+function checkSetup() {
+  var log = [], bad = 0;
+  function ok(c, m) { log.push((c ? 'سليم: ' : 'راجع: ') + m); if (!c) bad++; }
+  function warn(m) { log.push('تنبيه: ' + m); }
+  var staff = table_('Staff'), studs = table_('Students'), lib = table_('Library');
+
+  ok(staff.length > 0, 'عدد المستخدمين في Staff: ' + staff.length);
+  var seen = {}, domains = {}, activeRoles = {}, cover = {};
+  staff.forEach(function (s) {
+    var n = 'Staff صف ' + s._row, e = trim_(s.email).toLowerCase(), role = norm_(ROLE_MAP, s.role);
+    ok(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e), n + ': صيغة البريد');
+    ok(!seen[e], n + ': البريد غير مكرر'); seen[e] = 1;
+    domains[e.split('@')[1] || '؟'] = 1;
+    ok(ROLES.indexOf(role) >= 0, n + ': الدور معروف («' + trim_(s.role) + '»)');
+    var ds = list_(DEPT_MAP, s.department), ss = list_(STAGE_MAP, s.stage);
+    ok(ds.length > 0 && ds.every(function (d) { return ['ahli', 'diploma', 'special', 'all'].indexOf(d) >= 0; }), n + ': القسم معروف («' + trim_(s.department) + '»)');
+    ok(ss.length > 0 && ss.every(function (x) { return STAGES.indexOf(x) >= 0 || x === 'all'; }), n + ': المرحلة معروفة («' + trim_(s.stage) + '»)');
+    ok(['نعم', 'لا'].indexOf(trim_(s.active)) >= 0, n + ': «فعّال» نعم أو لا');
+    if (truthy_(s.active)) {
+      activeRoles[role] = (activeRoles[role] || 0) + 1;
+      if (['counselor', 'deputy'].indexOf(role) >= 0 && ds.indexOf('ahli') >= 0) ss.forEach(function (x) { cover[role + '|' + x] = true; });
+    }
+  });
+  ok(Object.keys(domains).length === 1, 'دومين واحد لكل البريد: ' + Object.keys(domains).join('، '));
+  ok(activeRoles.principal >= 1, 'يوجد مدير مدرسة فعّال');
+  ok(activeRoles.admin >= 1, 'يوجد مدير نظام فعّال');
+
+  var ids = {}, perStage = {};
+  studs.forEach(function (s) {
+    var id = trim_(s.id), st = norm_(STAGE_MAP, s.stage);
+    ok(!!id && !ids[id], 'Students صف ' + s._row + ': رقم داخلي موجود وغير مكرر'); ids[id] = 1;
+    ok(STAGES.indexOf(st) >= 0, 'Students صف ' + s._row + ': المرحلة معروفة («' + trim_(s.stage) + '»)');
+    ok(!!trim_(s.name) && !!trim_(s.grade) && !!trim_(s.section), 'Students صف ' + s._row + ': الاسم والصف والشعبة معبّأة');
+    if (truthy_(s.active)) perStage[st] = (perStage[st] || 0) + 1;
+  });
+  log.push('عدد الطلاب الفعّالين: ' + Object.keys(perStage).map(function (k) { return k + '=' + perStage[k]; }).join('، '));
+  STAGES.forEach(function (st) {
+    if (perStage[st]) ['counselor', 'deputy'].forEach(function (r) { if (!cover[r + '|' + st]) warn('لا يوجد ' + r + ' فعّال للأهلي/' + st + ' (طلابها لن يظهروا لأحد غير المدير)'); });
+  });
+
+  var cats = {}; lib.forEach(function (l) { if (truthy_(l.active)) cats[trim_(l.category)] = (cats[trim_(l.category)] || 0) + 1; });
+  CATS.forEach(function (c) { ok((cats[c] || 0) >= MAX[c], 'المكتبة: ' + c + ' = ' + (cats[c] || 0) + ' (الحد الأدنى ' + MAX[c] + ')'); });
+  log.push(bad ? ('النتيجة: ' + bad + ' بند يحتاج مراجعة.') : 'النتيجة: كل البنود سليمة.');
+  Logger.log(log.join('\n'));
+  return log;
+}
+
 /* ───────────── اختبار الصلاحيات بمستخدمين وهميين ───────────── */
 
 /**

@@ -23,7 +23,7 @@ global.LockService = { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }
 global.Utilities = { getUuid: () => Math.random().toString(16).slice(2) + '0000000000', formatDate: d => d.toISOString() };
 global.Session = { getActiveUser: () => ({ getEmail: () => EMAIL }) };
 global.Logger = { log() {} }; global.HtmlService = {};
-eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__api={setup,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit};');
+eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__api={checkSetup,setup,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit};');
 __api.setup();
 const DEMO = JSON.parse(fs.readFileSync(path.join(root, 'data.js'), 'utf8').match(/window\.DEMO=(\{.*\});/s)[1]);
 const AR = { primary: 'ابتدائي', middle: 'متوسط', secondary: 'ثانوي' };
@@ -34,6 +34,10 @@ DEMO.library.forEach(l => data.Library.push([l.id, l.category, l.text, 'all', 'T
  ['d.m@example.test', 'وكيل متوسط', 'وكيل شؤون الطلاب', 'الأهلي', 'متوسط'], ['p@example.test', 'مدير', 'مدير المدرسة', 'الكل', 'الكل'],
  ['sys@example.test', 'مهندس', 'مدير النظام', 'الكل', 'الكل']].forEach(r => data.Staff.push([...r, 'نعم']));
 
+const chk = __api.checkSetup();
+ok(!chk.some(l => l.startsWith('راجع')), 'checkSetup: لا بنود «راجع» على بيانات سليمة');
+ok(chk.some(l => l.startsWith('تنبيه')), 'checkSetup: ينبّه إلى مرحلة بلا موجه/وكيل');
+ok(!chk.join(' ').includes('@'), 'checkSetup لا يطبع بريداً');
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
