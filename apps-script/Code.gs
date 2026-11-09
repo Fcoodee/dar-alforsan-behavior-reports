@@ -373,12 +373,14 @@ function audit_(who, action, target, detail) {
  * بأرقام الصفوف وأعدادها فقط، فيمكن إرسال السجل لمهندس النظام دون كشف بيانات.
  */
 function checkSetup() {
-  var log = [], bad = 0;
-  function ok(c, m) { log.push((c ? 'سليم: ' : 'راجع: ') + m); if (!c) bad++; }
+  var log = [], bad = 0, pass = 0;
+  // لا تُطبع البنود السليمة (سجل Apps Script يُقتطع إن كبر)؛ تُعدّ فقط، وتُطبع المخالفات والتنبيهات والملخص
+  function ok(c, m) { if (c) pass++; else { log.push('راجع: ' + m); bad++; } }
   function warn(m) { log.push('تنبيه: ' + m); }
   var staff = table_('Staff'), studs = table_('Students'), lib = table_('Library');
 
-  ok(staff.length > 0, 'عدد المستخدمين في Staff: ' + staff.length);
+  ok(staff.length > 0, 'ورقة Staff فارغة');
+  log.push('عدد المستخدمين في Staff: ' + staff.length);
   var seen = {}, activeRoles = {}, cover = {};
   staff.forEach(function (s) {
     var n = 'Staff صف ' + s._row, u = trim_(s.username), ri = roleInfo_(s.role);
@@ -416,6 +418,7 @@ function checkSetup() {
 
   var cats = {}; lib.forEach(function (l) { if (truthy_(l.active)) cats[trim_(l.category)] = (cats[trim_(l.category)] || 0) + 1; });
   CATS.forEach(function (c) { ok((cats[c] || 0) >= MAX[c], 'المكتبة: ' + c + ' = ' + (cats[c] || 0) + ' (الحد الأدنى ' + MAX[c] + ')'); });
+  log.push('عدد الفحوص السليمة: ' + pass);
   log.push(bad ? ('النتيجة: ' + bad + ' بند يحتاج مراجعة.') : 'النتيجة: كل البنود سليمة.');
   Logger.log(log.join('\n'));
   return log;
