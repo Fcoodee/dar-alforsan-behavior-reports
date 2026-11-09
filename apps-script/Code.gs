@@ -2,25 +2,45 @@
  * تقرير الأداء السلوكي والأكاديمي — الخلفية (Google Sheets + Apps Script)
  *
  * سكربت مرتبط بالشيت (Container-bound). الشيت يملكه مدير النظام فقط ولا يُشارك مع المعلمين؛
- * الجميع يدخل عبر تطبيق الويب المقيّد بدومين المدرسة، والتصفية حسب المرحلة تتم هنا في الخادم.
+ * الجميع يدخل عبر تطبيق الويب المقيّد بدومين المدرسة، والتصفية حسب القسم والمرحلة تتم هنا في الخادم.
  *
+ * الأعمدة تُقرأ بأسمائها (عربية أو إنجليزية)، فلا يتعطل السكربت لو تغيّر ترتيبها أو أُضيف عمود.
  * لا يحتوي هذا الملف أي بيانات طلاب أو رسائل بريد. البيانات تُدخل في الشيت فقط.
  */
 
-var SHEETS = {
-  Staff:    ['email', 'name', 'role', 'stage', 'active'],
-  Students: ['id', 'name', 'stage', 'class', 'active'],
-  Library:  ['id', 'category', 'text', 'stage', 'active'],
-  Reports:  ['id', 'studentId', 'year', 'status', 'createdBy', 'createdAt', 'updatedAt', 'reviewedBy', 'approvedBy', 'pdfUrl'],
-  Items:    ['reportId', 'category', 'text', 'source', 'order'],
-  Audit:    ['ts', 'email', 'action', 'target', 'detail']
-};
+var YEAR = '1448-1449';
 var ROLES = ['counselor', 'deputy', 'principal', 'admin'];
 var STAGES = ['primary', 'middle', 'secondary'];
 var CATS = ['strength', 'improve', 'recommend'];
 var MAX = { strength: 4, improve: 4, recommend: 3 };
 var MAX_CUSTOM_LEN = 120;
-var YEAR = '1447-1448';
+
+// أسماء الأعمدة المقبولة لكل مفتاح داخلي (الأولى هي الاسم المعتمد عند الإنشاء)
+var HDR = {
+  Students: { id: ['رقم الطالب (داخلي)', 'id'], department: ['القسم', 'department'], stage: ['المرحلة', 'stage'], grade: ['الصف', 'grade'],
+              section: ['الشعبة', 'section'], name: ['الاسم بالعربية', 'name'], name_en: ['الاسم بالإنجليزية', 'name_en'], active: ['فعّال', 'active'] },
+  Staff:    { email: ['البريد (دومين المدرسة)', 'email'], name: ['الاسم', 'name'], role: ['الدور', 'role'], department: ['القسم', 'department'],
+              stage: ['المرحلة', 'stage'], active: ['فعّال', 'active'] },
+  Library:  { id: ['id'], category: ['category'], text: ['text'], stage: ['stage'], active: ['active'] },
+  Reports:  { id: ['id'], studentId: ['studentId'], year: ['year'], status: ['status'], createdBy: ['createdBy'], createdAt: ['createdAt'],
+              updatedAt: ['updatedAt'], reviewedBy: ['reviewedBy'], approvedBy: ['approvedBy'], pdfUrl: ['pdfUrl'] },
+  Items:    { reportId: ['reportId'], category: ['category'], text: ['text'], source: ['source'], order: ['order'] },
+  Audit:    { ts: ['ts'], email: ['email'], action: ['action'], target: ['target'], detail: ['detail'] }
+};
+var HDR_ORDER = {
+  Students: ['id', 'department', 'stage', 'grade', 'section', 'name', 'name_en', 'active'],
+  Staff: ['email', 'name', 'role', 'department', 'stage', 'active'],
+  Library: ['id', 'category', 'text', 'stage', 'active'],
+  Reports: ['id', 'studentId', 'year', 'status', 'createdBy', 'createdAt', 'updatedAt', 'reviewedBy', 'approvedBy', 'pdfUrl'],
+  Items: ['reportId', 'category', 'text', 'source', 'order'],
+  Audit: ['ts', 'email', 'action', 'target', 'detail']
+};
+
+var DEPT_MAP = { 'الأهلي': 'ahli', 'الاهلي': 'ahli', 'ahli': 'ahli', 'الدبلوما الأمريكية': 'diploma', 'الدبلوما': 'diploma', 'diploma': 'diploma',
+                 'التربية الخاصة': 'special', 'special': 'special', 'الكل': 'all', 'all': 'all' };
+var STAGE_MAP = { 'ابتدائي': 'primary', 'primary': 'primary', 'متوسط': 'middle', 'middle': 'middle', 'ثانوي': 'secondary', 'secondary': 'secondary', 'الكل': 'all', 'all': 'all' };
+var ROLE_MAP = { 'موجه طلابي': 'counselor', 'counselor': 'counselor', 'وكيل شؤون الطلاب': 'deputy', 'deputy': 'deputy',
+                 'مدير المدرسة': 'principal', 'principal': 'principal', 'مدير النظام': 'admin', 'admin': 'admin' };
 
 // الحالة الحالية -> { الحالة التالية: الأدوار المسموح لها بالنقلة }
 var TRANSITIONS = {
@@ -32,71 +52,111 @@ var TRANSITIONS = {
 };
 var EDITABLE = { DRAFT: true };
 
+/* ───────────── أدوات الأعمدة والقيم ───────────── */
+
+function trim_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
+function norm_(map, v) { var t = trim_(v); return map[t] || t.toLowerCase(); }
+function list_(map, v) { return trim_(v).split(/[+،,]/).map(trim_).filter(Boolean).map(function (x) { return norm_(map, x); }); }
+function truthy_(v) { return v === true || ['نعم', 'true', 'yes', 'y', '1'].indexOf(trim_(v).toLowerCase()) >= 0; }
+
+/** يقرأ ورقة كمصفوفة كائنات بمفاتيح داخلية، مع رقم الصف _row. */
+function table_(name) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  if (!sh) throw new Error('الورقة غير موجودة: ' + name);
+  var v = sh.getDataRange().getValues();
+  if (!v.length) return [];
+  var head = v.shift(), keyAt = [];
+  head.forEach(function (h, j) {
+    var t = trim_(h), found = null;
+    Object.keys(HDR[name]).forEach(function (k) { if (HDR[name][k].indexOf(t) >= 0) found = k; });
+    keyAt[j] = found;
+  });
+  var out = [];
+  v.forEach(function (r, i) {
+    var o = { _row: i + 2 }, any = false;
+    keyAt.forEach(function (k, j) { if (k) { o[k] = r[j]; if (trim_(r[j]) !== '') any = true; } });
+    if (any) out.push(o);
+  });
+  return out;
+}
+
+/** رقم عمود مفتاح داخلي في ورقة (1-based) أو 0 إن لم يوجد. */
+function colOf_(name, key) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  for (var j = 0; j < head.length; j++) if (HDR[name][key].indexOf(trim_(head[j])) >= 0) return j + 1;
+  return 0;
+}
+
+function setCell_(name, row, key, value) {
+  var c = colOf_(name, key);
+  if (!c) throw new Error('العمود غير موجود: ' + name + '.' + key);
+  SpreadsheetApp.getActive().getSheetByName(name).getRange(row, c).setValue(value);
+}
+
+/** يضيف صفاً بحسب ترتيب الأعمدة الفعلي في الورقة. */
+function appendObj_(name, obj) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  var row = head.map(function (h) {
+    var t = trim_(h), val = '';
+    Object.keys(HDR[name]).forEach(function (k) { if (HDR[name][k].indexOf(t) >= 0 && obj[k] !== undefined) val = obj[k]; });
+    return val;
+  });
+  sh.appendRow(row);
+}
+
+function deleteRows_(name, rows) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  rows.sort(function (a, b) { return b - a; }).forEach(function (r) { sh.deleteRow(r); });
+}
+
 /* ───────────── الإعداد (يُشغَّل مرة واحدة من مدير النظام) ───────────── */
 
 function setup() {
   var ss = SpreadsheetApp.getActive();
-  Object.keys(SHEETS).forEach(function (name) {
+  Object.keys(HDR_ORDER).forEach(function (name) {
     var sh = ss.getSheetByName(name) || ss.insertSheet(name);
     if (sh.getLastRow() === 0) {
-      sh.getRange(1, 1, 1, SHEETS[name].length).setValues([SHEETS[name]]).setFontWeight('bold');
+      var heads = HDR_ORDER[name].map(function (k) { return HDR[name][k][0]; });
+      sh.getRange(1, 1, 1, heads.length).setValues([heads]).setFontWeight('bold');
       sh.setFrozenRows(1);
     }
   });
-  seedLibraryIfEmpty_();
-  return 'تم إنشاء الأوراق. أضف الموظفين والطلاب يدوياً أو بالاستيراد.';
-}
-
-function seedLibraryIfEmpty_() {
-  var sh = SpreadsheetApp.getActive().getSheetByName('Library');
-  if (sh.getLastRow() > 1) return;
-  var rows = [];
-  function add(cat, arr) { arr.forEach(function (t, i) { rows.push([cat.charAt(0).toUpperCase() + '-' + (i + 1), cat, t, 'all', true]); }); }
-  add('strength', ['يشارك بفاعلية أثناء الحصة الدراسية.', 'يتحلى بالهدوء وحسن الاستماع أثناء الشرح.', 'يتحلى بالأمانة والصدق في تعاملاته اليومية.', 'يحافظ على النظام داخل الفصل والطابور.']);
-  add('improve', ['يعمل على تحسين مهارات الاستماع والإنصات.', 'يحرص على تنظيم وقته وإنجاز المهام المطلوبة.']);
-  add('recommend', ['تنمية المهارات الشخصية والاجتماعية بالمشاركة في الأنشطة التطوعية والبرامج الهادفة.', 'استثمار الإجازة الصيفية في تنمية مهارات القراءة والتركيز.', 'تنمية مهارات التواصل والحوار الإيجابي']);
-  sh.getRange(2, 1, rows.length, 5).setValues(rows);
-  // ملاحظة: المكتبة الكاملة (40 + 40) تُستورد من ملف Excel الأصلي بنفس الأعمدة.
+  return 'تم التأكد من الأوراق. أضف الموظفين في Staff، وتأكد من اكتمال Students وLibrary.';
 }
 
 /* ───────────── الهوية والصلاحيات ───────────── */
-
-function table_(name) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(name);
-  var v = sh.getDataRange().getValues();
-  var head = v.shift();
-  return v.map(function (r, i) {
-    var o = { _row: i + 2 };
-    head.forEach(function (h, j) { o[h] = r[j]; });
-    return o;
-  });
-}
 
 /** يستخرج سياق المستخدم الحالي أو يرمي خطأ إن لم يكن موظفاً فعّالاً. */
 function whoAmI_(emailOverride) {
   var email = (emailOverride || Session.getActiveUser().getEmail() || '').toLowerCase();
   if (!email) throw new Error('تعذر تحديد الحساب.');
-  var me = table_('Staff').filter(function (s) {
-    return String(s.email).toLowerCase() === email && s.active === true;
-  })[0];
-  if (!me || ROLES.indexOf(me.role) < 0) throw new Error('الحساب غير مصرّح له.');
-  return { email: email, name: me.name, role: me.role, stage: me.stage };
+  var me = table_('Staff').filter(function (s) { return trim_(s.email).toLowerCase() === email && truthy_(s.active); })[0];
+  var role = me ? norm_(ROLE_MAP, me.role) : '';
+  if (!me || ROLES.indexOf(role) < 0) throw new Error('الحساب غير مصرّح له.');
+  var depts = list_(DEPT_MAP, me.department), stages = list_(STAGE_MAP, me.stage);
+  if (['principal', 'admin'].indexOf(role) < 0 && (!depts.length || !stages.length)) throw new Error('حساب بلا قسم أو مرحلة.');
+  return { email: email, name: trim_(me.name), role: role, departments: depts, stages: stages };
 }
 
-function canSeeStage_(ctx, stage) {
-  var mine = String(ctx.stage).split('+');
-  return ctx.role === 'principal' || ctx.role === 'admin' || mine.indexOf('all') >= 0 || mine.indexOf(stage) >= 0;
+function canSee_(ctx, s) {
+  if (ctx.role === 'principal' || ctx.role === 'admin') return true;
+  var d = norm_(DEPT_MAP, s.department), st = norm_(STAGE_MAP, s.stage);
+  return (ctx.departments.indexOf('all') >= 0 || ctx.departments.indexOf(d) >= 0) && (ctx.stages.indexOf('all') >= 0 || ctx.stages.indexOf(st) >= 0);
 }
 
 function studentFor_(ctx, studentId) {
-  var s = table_('Students').filter(function (x) { return x.id === studentId && x.active === true; })[0];
-  if (!s || !canSeeStage_(ctx, s.stage)) throw new Error('الطالب غير متاح.');
+  var s = table_('Students').filter(function (x) { return trim_(x.id) === studentId && truthy_(x.active); })[0];
+  if (!s || !canSee_(ctx, s)) throw new Error('الطالب غير متاح.');
   return s;
 }
 
+function stageOf_(s) { return norm_(STAGE_MAP, s.stage); }
+
 /* ───────────── واجهة برمجية (تُستدعى من الصفحة) ───────────── */
 
-function api_me() { var c = whoAmI_(); return { name: c.name, role: c.role, stage: c.stage }; }
+function api_me() { var c = whoAmI_(); return { name: c.name, role: c.role, stage: c.stages.join('+'), department: c.departments.join('+') }; }
 
 function api_students() { return listStudents_(whoAmI_()); }
 
@@ -104,31 +164,43 @@ function listStudents_(ctx) {
   var reports = {};
   table_('Reports').filter(function (r) { return r.year === YEAR; }).forEach(function (r) { reports[r.studentId] = r.status; });
   return table_('Students')
-    .filter(function (s) { return s.active === true && canSeeStage_(ctx, s.stage); })
-    .map(function (s) { return { id: s.id, name: s.name, stage: s.stage, class: s.class, status: reports[s.id] || 'NONE' }; });
+    .filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); })
+    .map(function (s) {
+      return { id: trim_(s.id), name: trim_(s.name), name_en: trim_(s.name_en), department: trim_(s.department), stage: stageOf_(s),
+               grade: trim_(s.grade), section: trim_(s.section), class: trim_(s.grade) + ' ' + trim_(s.section), status: reports[trim_(s.id)] || 'NONE' };
+    });
 }
-
 
 /** إحصاءات المتابعة لكل مرحلة ضمن صلاحية المستخدم (للوحة المتابعة والأرقام بجانب المستخدم). */
 function api_stats() { return stats_(whoAmI_()); }
 
 function stats_(ctx) {
   var out = {};
-  STAGES.forEach(function (st) {
-    if (canSeeStage_(ctx, st)) out[st] = { total: 0, NONE: 0, DRAFT: 0, SUBMITTED: 0, REVIEWED: 0, APPROVED: 0, PUBLISHED: 0 };
-  });
+  STAGES.forEach(function (st) { out[st] = { total: 0, NONE: 0, DRAFT: 0, SUBMITTED: 0, REVIEWED: 0, APPROVED: 0, PUBLISHED: 0 }; });
   var status = {};
   table_('Reports').filter(function (r) { return r.year === YEAR; }).forEach(function (r) { status[r.studentId] = r.status; });
-  table_('Students').filter(function (s) { return s.active === true && out[s.stage]; }).forEach(function (s) {
-    var k = status[s.id] || 'NONE';
-    out[s.stage].total++;
-    out[s.stage][k]++;
+  table_('Students').filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); }).forEach(function (s) {
+    var st = stageOf_(s); if (!out[st]) return;
+    var k = status[trim_(s.id)] || 'NONE';
+    out[st].total++; out[st][k]++;
   });
+  Object.keys(out).forEach(function (st) { if (!out[st].total) delete out[st]; });
   return { stages: out };
 }
 
-function api_library() { return table_('Library').filter(function (l) { return l.active === true; })
-  .map(function (l) { return { id: l.id, category: l.category, text: l.text, stage: l.stage }; }); }
+function api_library() {
+  return table_('Library').filter(function (l) { return truthy_(l.active); })
+    .map(function (l) { return { id: l.id, category: trim_(l.category), text: trim_(l.text), stage: l.stage }; });
+}
+
+function api_audit() {
+  var ctx = whoAmI_();
+  if (['principal', 'admin'].indexOf(ctx.role) < 0) throw new Error('غير مصرّح.');
+  return table_('Audit').slice(-60).reverse().map(function (a) {
+    var ts = a.ts instanceof Date ? Utilities.formatDate(a.ts, 'Asia/Riyadh', "yyyy-MM-dd'T'HH:mm:ss") : trim_(a.ts);
+    return { ts: ts, email: a.email, action: a.action, target: a.target, detail: a.detail };
+  });
+}
 
 function api_getReport(studentId) { return getReport_(whoAmI_(), studentId); }
 
@@ -142,7 +214,7 @@ function getReport_(ctx, studentId) {
   return { id: rep.id, status: rep.status, items: items, pdfUrl: rep.pdfUrl };
 }
 
-/** items: [{category, text, source:'library'|'custom'}] */
+/** items: [{category, text}] */
 function api_saveReport(studentId, items) { return saveReport_(whoAmI_(), studentId, items); }
 
 function saveReport_(ctx, studentId, items) {
@@ -155,36 +227,28 @@ function saveReport_(ctx, studentId, items) {
 
     var counts = { strength: 0, improve: 0, recommend: 0 };
     var libTexts = {};
-    table_('Library').forEach(function (l) { libTexts[l.text] = true; });
+    table_('Library').forEach(function (l) { libTexts[trim_(l.text)] = true; });
     var clean = items.map(function (it, i) {
       if (CATS.indexOf(it.category) < 0) throw new Error('فئة غير صالحة.');
-      var t = String(it.text || '').trim();
+      var t = trim_(it.text);
       if (!t) throw new Error('عبارة فارغة.');
       var source = libTexts[t] ? 'library' : 'custom';
       if (source === 'custom' && t.length > MAX_CUSTOM_LEN) throw new Error('العبارة المخصصة أطول من ' + MAX_CUSTOM_LEN + ' حرفاً.');
       counts[it.category]++;
       if (counts[it.category] > MAX[it.category]) throw new Error('تجاوز الحد الأقصى للفئة.');
-      return [null, it.category, t, source, i + 1];
+      return { category: it.category, text: t, source: source, order: i + 1 };
     });
 
-    var now = new Date();
-    var reports = SpreadsheetApp.getActive().getSheetByName('Reports');
-    var itemsSh = SpreadsheetApp.getActive().getSheetByName('Items');
-    var id;
+    var now = new Date(), id;
     if (!rep) {
       id = 'R-' + Utilities.getUuid().slice(0, 8);
-      reports.appendRow([id, studentId, YEAR, 'DRAFT', ctx.email, now, now, '', '', '']);
+      appendObj_('Reports', { id: id, studentId: studentId, year: YEAR, status: 'DRAFT', createdBy: ctx.email, createdAt: now, updatedAt: now });
     } else {
       id = rep.id;
-      reports.getRange(rep._row, 7).setValue(now);
-      // حذف البنود القديمة (من الأسفل للأعلى)
-      table_('Items').filter(function (i) { return i.reportId === id; }).map(function (i) { return i._row; })
-        .sort(function (a, b) { return b - a; }).forEach(function (r) { itemsSh.deleteRow(r); });
+      setCell_('Reports', rep._row, 'updatedAt', now);
+      deleteRows_('Items', table_('Items').filter(function (i) { return i.reportId === id; }).map(function (i) { return i._row; }));
     }
-    if (clean.length) {
-      clean.forEach(function (c) { c[0] = id; });
-      itemsSh.getRange(itemsSh.getLastRow() + 1, 1, clean.length, 5).setValues(clean);
-    }
+    clean.forEach(function (c) { c.reportId = id; appendObj_('Items', c); });
     audit_(ctx.email, 'SAVE', id, clean.length + ' بنود');
     return { id: id, status: rep ? rep.status : 'DRAFT' };
   } finally { lock.releaseLock(); }
@@ -200,136 +264,82 @@ function transition_(ctx, studentId, to, reason) {
     if (!rep) throw new Error('لا يوجد تقرير.');
     var allowed = (TRANSITIONS[rep.status] || {})[to];
     if (!allowed || allowed.indexOf(ctx.role) < 0) throw new Error('هذه النقلة غير مسموحة لدورك.');
-    if (to === 'DRAFT' && !String(reason || '').trim()) throw new Error('سبب الإعادة مطلوب.');
+    if (to === 'DRAFT' && !trim_(reason)) throw new Error('سبب الإعادة مطلوب.');
     if (to === 'SUBMITTED') {
       var got = { strength: 0, improve: 0, recommend: 0 };
       table_('Items').filter(function (i) { return i.reportId === rep.id; }).forEach(function (i) { got[i.category]++; });
       if (!got.strength || !got.improve || !got.recommend) throw new Error('أكمل نقطة قوة وتحسين وتوصية على الأقل.');
     }
-    var sh = SpreadsheetApp.getActive().getSheetByName('Reports');
-    sh.getRange(rep._row, 4).setValue(to);
-    sh.getRange(rep._row, 7).setValue(new Date());
-    if (to === 'REVIEWED') sh.getRange(rep._row, 8).setValue(ctx.email);
-    if (to === 'APPROVED') sh.getRange(rep._row, 9).setValue(ctx.email);
+    setCell_('Reports', rep._row, 'status', to);
+    setCell_('Reports', rep._row, 'updatedAt', new Date());
+    if (to === 'REVIEWED') setCell_('Reports', rep._row, 'reviewedBy', ctx.email);
+    if (to === 'APPROVED') setCell_('Reports', rep._row, 'approvedBy', ctx.email);
     audit_(ctx.email, 'TRANSITION', rep.id, rep.status + ' -> ' + to + (reason ? ' | ' + reason : ''));
-    return { status: to };
+    return { status: to, pdfUrl: '' };
   } finally { lock.releaseLock(); }
 }
 
 function audit_(email, action, target, detail) {
-  SpreadsheetApp.getActive().getSheetByName('Audit').appendRow([new Date(), email, action, target, detail || '']);
+  appendObj_('Audit', { ts: new Date(), email: email, action: action, target: target, detail: detail || '' });
 }
 
-/* ───────────── اختبار الصلاحيات بمستخدمين وهميين (الخطوة 1) ───────────── */
+/* ───────────── اختبار الصلاحيات بمستخدمين وهميين ───────────── */
 
 /**
- * شغّل selfTest() من المحرر. يُنشئ ثلاثة موظفين وطلاباً وهميين بعلامة TEST_ ثم يتحقق ويحذفها.
- * استخدم عناوين example.test فقط، ولا تضع بيانات حقيقية هنا.
+ * شغّل selfTest() من المحرر. يُنشئ موظفين وطلاباً وهميين (example.test) ثم يتحقق ويحذفها.
+ * لا تضع بيانات حقيقية هنا.
  */
 function selfTest() {
   var log = [];
   function ok(cond, msg) { log.push((cond ? 'نجح: ' : 'فشل: ') + msg); }
   function throws(fn, msg) { try { fn(); log.push('فشل: ' + msg); } catch (e) { log.push('نجح: ' + msg); } }
 
-  var staff = SpreadsheetApp.getActive().getSheetByName('Staff');
-  var studs = SpreadsheetApp.getActive().getSheetByName('Students');
-  var s0 = staff.getLastRow(), t0 = studs.getLastRow();
-  staff.getRange(s0 + 1, 1, 4, 5).setValues([
-    ['c.primary@example.test', 'TEST_موجه ابتدائي', 'counselor', 'primary', true],
-    ['d.middle@example.test',  'TEST_وكيل متوسط',  'deputy',    'middle',  true],
-    ['p@example.test',         'TEST_مدير',        'principal', 'all',     true],
-    ['x.off@example.test',     'TEST_معطّل',       'counselor', 'primary', false]
-  ]);
-  studs.getRange(t0 + 1, 1, 2, 5).setValues([
-    ['TEST-1', 'TEST_طالب ابتدائي', 'primary', '1/أ', true],
-    ['TEST-2', 'TEST_طالب متوسط',   'middle',  '1م/أ', true]
-  ]);
+  appendObj_('Staff', { email: 'c.primary@example.test', name: 'TEST_موجه ابتدائي', role: 'موجه طلابي', department: 'الأهلي', stage: 'ابتدائي', active: 'نعم' });
+  appendObj_('Staff', { email: 'd.middle@example.test', name: 'TEST_وكيل متوسط', role: 'وكيل شؤون الطلاب', department: 'الأهلي', stage: 'متوسط', active: 'نعم' });
+  appendObj_('Staff', { email: 'c.diploma@example.test', name: 'TEST_موجه دبلوما', role: 'موجه طلابي', department: 'الدبلوما الأمريكية', stage: 'ابتدائي', active: 'نعم' });
+  appendObj_('Staff', { email: 'p@example.test', name: 'TEST_مدير', role: 'مدير المدرسة', department: 'الكل', stage: 'الكل', active: 'نعم' });
+  appendObj_('Staff', { email: 'x.off@example.test', name: 'TEST_معطّل', role: 'موجه طلابي', department: 'الأهلي', stage: 'ابتدائي', active: 'لا' });
+  appendObj_('Students', { id: 'TEST-1', department: 'الأهلي', stage: 'ابتدائي', grade: 'الثالث الابتدائي', section: 'أ', name: 'TEST_طالب ابتدائي', active: 'نعم' });
+  appendObj_('Students', { id: 'TEST-2', department: 'الأهلي', stage: 'متوسط', grade: 'الأول المتوسط', section: 'أ', name: 'TEST_طالب متوسط', active: 'نعم' });
+  appendObj_('Students', { id: 'TEST-3', department: 'الدبلوما الأمريكية', stage: 'ابتدائي', grade: 'Grade 3', section: 'A', name: 'TEST_طالب دبلوما', active: 'نعم' });
   try {
-    var c = whoAmI_('c.primary@example.test'), d = whoAmI_('d.middle@example.test'), p = whoAmI_('p@example.test');
-    ok(listStudents_(c).every(function (s) { return s.stage === 'primary'; }), 'موجه الابتدائي يرى الابتدائي فقط');
-    ok(listStudents_(d).every(function (s) { return s.stage === 'middle'; }), 'وكيل المتوسط يرى المتوسط فقط');
-    ok(listStudents_(p).some(function (s) { return s.id === 'TEST-1'; }) && listStudents_(p).some(function (s) { return s.id === 'TEST-2'; }), 'المدير يرى المرحلتين');
+    var c = whoAmI_('c.primary@example.test'), d = whoAmI_('d.middle@example.test'), p = whoAmI_('p@example.test'), cd = whoAmI_('c.diploma@example.test');
+    var ids = function (ctx) { return listStudents_(ctx).filter(function (s) { return /^TEST-/.test(s.id); }).map(function (s) { return s.id; }).join(); };
+    ok(ids(c) === 'TEST-1', 'موجه الأهلي/الابتدائي يرى TEST-1 فقط');
+    ok(ids(d) === 'TEST-2', 'وكيل الأهلي/المتوسط يرى TEST-2 فقط');
+    ok(ids(cd) === 'TEST-3', 'موجه الدبلوما يرى طلاب الدبلوما فقط');
+    ok(ids(p) === 'TEST-1,TEST-2,TEST-3', 'المدير يرى كل الأقسام');
     throws(function () { getReport_(c, 'TEST-2'); }, 'موجه الابتدائي لا يقرأ طالباً من المتوسط');
+    throws(function () { getReport_(c, 'TEST-3'); }, 'موجه الأهلي لا يقرأ طالباً من الدبلوما');
     throws(function () { whoAmI_('x.off@example.test'); }, 'الحساب المعطّل مرفوض');
     throws(function () { whoAmI_('nobody@example.test'); }, 'حساب غير موجود مرفوض');
     var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'عبارة مخصصة للاختبار' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
     saveReport_(c, 'TEST-1', items);
     throws(function () { saveReport_(c, 'TEST-1', items.concat([1, 2, 3, 4, 5].map(function () { return { category: 'strength', text: 'x' }; }))); }, 'تجاوز حد النقاط مرفوض');
     transition_(c, 'TEST-1', 'SUBMITTED');
-    throws(function () { transition_(c, 'TEST-1', 'APPROVED'); }, 'الموجه لا يعتمد');
-    throws(function () { saveReport_(c, 'TEST-1', items); }, 'التقرير المُسلَّم مقفل للتعديل');
     var stC = stats_(c), stD = stats_(d), stP = stats_(p);
     ok(Object.keys(stC.stages).join() === 'primary' && Object.keys(stD.stages).join() === 'middle', 'الإحصاءات مقيّدة بمرحلة المستخدم');
-    ok(Object.keys(stP.stages).length === 3, 'إحصاءات المدير تشمل المراحل الثلاث');
-    ok(stC.stages.primary.SUBMITTED >= 1, 'الإرسال يظهر في إحصاءات الوكيل/الموجه');
-    var dp = whoAmI_('d.middle@example.test');
-    throws(function () { transition_(dp, 'TEST-1', 'REVIEWED'); }, 'وكيل المتوسط لا يراجع طالب الابتدائي');
+    ok(stC.stages.primary.SUBMITTED >= 1, 'الإرسال يظهر في الإحصاءات');
+    ok(stP.stages.primary && stP.stages.middle, 'إحصاءات المدير تشمل المراحل');
+    throws(function () { transition_(c, 'TEST-1', 'APPROVED'); }, 'الموجه لا يعتمد');
+    throws(function () { saveReport_(c, 'TEST-1', items); }, 'التقرير المُرسَل مقفل للتعديل');
+    throws(function () { transition_(d, 'TEST-1', 'REVIEWED'); }, 'وكيل المتوسط لا يراجع طالب الابتدائي');
   } catch (e) { log.push('خطأ غير متوقع: ' + e.message); }
   // تنظيف
-  [['Staff', 'email', /example\.test$/], ['Students', 'id', /^TEST-/]].forEach(function (x) {
-    var sh = SpreadsheetApp.getActive().getSheetByName(x[0]);
-    table_(x[0]).filter(function (r) { return x[2].test(String(r[x[1]])); }).map(function (r) { return r._row; })
-      .sort(function (a, b) { return b - a; }).forEach(function (r) { sh.deleteRow(r); });
-  });
-  var rid = table_('Reports').filter(function (r) { return r.studentId === 'TEST-1'; });
-  rid.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; })
-    .forEach(function (r) { SpreadsheetApp.getActive().getSheetByName('Reports').deleteRow(r); });
-  var its = SpreadsheetApp.getActive().getSheetByName('Items');
-  rid.forEach(function (r) {
-    table_('Items').filter(function (i) { return i.reportId === r.id; }).map(function (i) { return i._row; })
-      .sort(function (a, b) { return b - a; }).forEach(function (row) { its.deleteRow(row); });
-  });
+  var rids = table_('Reports').filter(function (r) { return /^TEST-/.test(r.studentId); });
+  deleteRows_('Items', table_('Items').filter(function (i) { return rids.some(function (r) { return r.id === i.reportId; }); }).map(function (i) { return i._row; }));
+  deleteRows_('Reports', rids.map(function (r) { return r._row; }));
+  deleteRows_('Audit', table_('Audit').filter(function (a) { return /example\.test$/.test(trim_(a.email)); }).map(function (a) { return a._row; }));
+  deleteRows_('Staff', table_('Staff').filter(function (r) { return /example\.test$/.test(trim_(r.email)); }).map(function (r) { return r._row; }));
+  deleteRows_('Students', table_('Students').filter(function (r) { return /^TEST-/.test(trim_(r.id)); }).map(function (r) { return r._row; }));
   Logger.log(log.join('\n'));
   return log;
 }
 
-/* ───────────── اختبار توليد PDF (الخطوة 2) ───────────── */
-
-/**
- * يولّد PDF تجريبياً من HTML بسيط (RTL) ويحفظه في مجلد Drive باسم عشوائي.
- * شغّله وافتح الملف: هل ظهر العربي متصلاً وبالاتجاه الصحيح؟ هل الجدول سليم؟
- * قبل التشغيل: اجعل الخاصية PDF_TEST_FOLDER_ID في Script Properties = معرّف مجلد خاص.
- * البيانات هنا وهمية بالكامل.
- */
-function testPdf() {
-  var folderId = PropertiesService.getScriptProperties().getProperty('PDF_TEST_FOLDER_ID');
-  if (!folderId) throw new Error('اضبط PDF_TEST_FOLDER_ID في Script Properties.');
-  var data = {
-    name: 'طالب تجريبي', year: YEAR,
-    strength: ['يشارك بفاعلية أثناء الحصة الدراسية.', 'يتحلى بالهدوء وحسن الاستماع أثناء الشرح.', 'يتحلى بالأمانة والصدق في تعاملاته اليومية.', 'يحافظ على النظام داخل الفصل والطابور.'],
-    improve: ['يعمل على تحسين مهارات الاستماع والإنصات.', 'يحرص على تنظيم وقته وإنجاز المهام المطلوبة.'],
-    recommend: ['تنمية المهارات الشخصية والاجتماعية بالمشاركة في الأنشطة التطوعية والبرامج الهادفة.', 'استثمار الإجازة الصيفية في تنمية مهارات القراءة والتركيز.', 'تنمية مهارات التواصل والحوار الإيجابي']
-  };
-  var blob = HtmlService.createHtmlOutput(reportHtml_(data)).getBlob().getAs('application/pdf')
-    .setName('TEST-' + Utilities.getUuid().slice(0, 8) + '.pdf');
-  var file = DriveApp.getFolderById(folderId).createFile(blob);
-  Logger.log('الملف: ' + file.getUrl());
-  return file.getUrl();
-}
-
-function esc_(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-
-/** قالب HTML مبسّط لاختبار التحويل. القالب البصري الكامل (الترويسة والشعار) يُضاف بعد نجاح الاختبار. */
-function reportHtml_(d) {
-  function rows(a, b) {
-    var n = Math.max(a.length, b.length, 1), out = '';
-    for (var i = 0; i < n; i++) out += '<tr><td>' + esc_(a[i] || '') + '</td><td>' + esc_(b[i] || '') + '</td></tr>';
-    return out;
-  }
-  return '<html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>' +
-    'body{font-family:Arial,sans-serif;direction:rtl;text-align:right;font-size:13px;line-height:1.7}' +
-    'h1{text-align:center;font-size:22px}table{width:100%;border-collapse:collapse;margin:8px 0}' +
-    'th,td{border:1px solid #9fb0bd;padding:6px 10px}th{background:#eef3f6}p{text-align:justify}' +
-    '</style></head><body dir="rtl">' +
-    '<h1>الأداء السلوكي والأكاديمي للعام الدراسي ' + esc_(d.year) + 'ه</h1>' +
-    '<p><b>شريكنا ولي أمر الطالب/ ' + esc_(d.name) + '</b></p>' +
-    '<table><tr><th>النقاط الإيجابية ونقاط القوة</th><th>نقاط تحتاج إلى دعم وتحسين</th></tr>' + rows(d.strength, d.improve) + '</table>' +
-    '<table><tr><th>التوصيات</th></tr>' + d.recommend.map(function (r) { return '<tr><td>' + esc_(r) + '</td></tr>'; }).join('') + '</table>' +
-    '<p>حفظكم الله ورعاكم، وكل عام وأنتم بخير</p></body></html>';
-}
-
-/* ───────────── تطبيق الويب (صفحة اختبار مبدئية) ───────────── */
+/* ───────────── تطبيق الويب ───────────── */
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index').setTitle('تقارير الأداء');
+  return HtmlService.createHtmlOutputFromFile('Index').setTitle('تقارير الأداء — دار الفرسان')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }

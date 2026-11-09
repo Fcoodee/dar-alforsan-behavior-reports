@@ -31,9 +31,9 @@ h1{margin:0;font-size:21px;font-weight:800}
 .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
 .btn.sel{background:var(--pri);border-color:var(--pri);color:#fff}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
 .chip{min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;border:1px solid #9fb0bd;background:#fff;padding:2px 4px}
-.chip b{font-size:15px}.chip small{font-size:12px}
+.chip b{font-size:13.5px;line-height:1.35;text-align:center}.chip small{font-size:12px}
 .chip.sel{background:var(--pri);color:#fff;border-color:var(--pri)}
 .list{max-height:420px;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .st{min-height:48px;text-align:right;border-radius:8px;border:1px solid #c3cfd8;background:#fff;padding:6px 12px;display:flex;flex-direction:column}
@@ -250,7 +250,7 @@ const Mock=(()=>{
 const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي
  const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error(e.message||e)))[fn](...a));
  return{isMock:false,users:()=>[],as:()=>call('api_me'),me:()=>call('api_me'),students:()=>call('api_students'),library:()=>call('api_library'),
-  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:async()=>[],stats:()=>call('api_stats'),reset(){}};
+  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:()=>call('api_audit'),stats:()=>call('api_stats'),reset(){}};
 })();
 const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
 
@@ -258,7 +258,7 @@ const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
 const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student',stats:null,filter:'all'};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const L=c=>'<bdi dir="ltr">'+esc(c)+'</bdi>';
+const L=c=>'<bdi>'+esc(c)+'</bdi>';
 const fmtDate=(loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'Asia/Riyadh'},o)).format(new Date());}catch(e){return '';}};
 function clockHtml(){return ''+(h=>h?'<span>'+h+'</span>':'')(fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))+(g=>g?'<span>الموافق '+g+'م</span>':'')(fmtDate('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'}))+'<span style="font-weight:800">'+fmtDate('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',hour12:true})+'</span>';}
 setInterval(()=>{const c=document.getElementById('clk');if(c)c.innerHTML=clockHtml();},20000);
@@ -483,7 +483,7 @@ function render(){
  usersBarHtml()+dashHtml()+maintHtml()+
  '<div class="cols">'+
  '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
- '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="مثال: طالب 15" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
+ '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="اكتب جزءاً من الاسم" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
  '<div class="row"><button class="btn'+(S.filter==='all'?' sel':'')+'" data-flt="all">كل طلاب الفصل</button><button class="btn'+(S.filter==='todo'?' sel':'')+'" data-flt="todo">بانتظار إجرائي ('+todo.length+')</button></div><div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><small>'+L(s.class)+' · '+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub">لا نتائج.</div>')+'</div></section>'+
  '<section class="card c2">'+(stu?
   '<div class="row" style="justify-content:space-between"><div><div class="sub">'+L(stu.class)+' · '+STAGE_AR[stu.stage]+'</div><h2 style="margin:0;font-size:18px">'+esc(stu.name)+'</h2></div><span class="badge b-'+(S.status==='NONE'?'DRAFT':S.status)+'">'+ST_AR[S.status]+'</span></div>'+
@@ -494,7 +494,7 @@ function render(){
   actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
  '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
   '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
-  '<button class="btn" id="zoom">عرض بالحجم الكامل</button>'+(B.isMock&&['principal','admin'].includes(S.user.role)?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
+  '<button class="btn" id="zoom">عرض بالحجم الكامل</button>'+(['principal','admin'].includes(S.user.role)?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap" id="pw"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');

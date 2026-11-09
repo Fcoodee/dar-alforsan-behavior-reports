@@ -14,10 +14,10 @@ async function suite(b,url,tag){
  // دخول الموجه
  await login(p,'dar0','048');await p.waitForSelector('.hero');
  ok((await p.textContent('.hero')).includes('موجه المرحلة الابتدائية'),tag+' دخول dar0 كموجه ابتدائي');
- ok((await p.$$eval('[data-cls]',e=>e.length))===11,tag+' الموجه يرى 11 فصلاً ابتدائياً فقط');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===8,tag+' الموجه يرى 8 شعب ابتدائية فقط');
  ok(await p.$('.ub')===null,tag+' الموجه لا يرى شريط الفريق');
- // يحرر ويرسل S-0001
- await p.evaluate(async()=>{await pick('S-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
+ // يحرر ويرسل AHL-P-0001
+ await p.evaluate(async()=>{await pick('AHL-P-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
  await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل',tag+' الموجه يرسل للوكيل');
  ok((await p.textContent('.hero .pl.ok b'))==='1',tag+' شارة الموجه بجانب اسمه: أُرسل 1');
@@ -27,25 +27,25 @@ async function suite(b,url,tag){
  ok((await p.textContent('.hero .pl.act b'))==='1',tag+' شارة الوكيل: بانتظارك 1');
  await p.click('[data-flt=todo]');await p.waitForTimeout(200);
  ok((await p.$$eval('[data-stu]',e=>e.length))===1,tag+' فلتر «بانتظار إجرائي» يعرض تقريراً واحداً');
- await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);
+ await p.click('[data-stu="AHL-P-0001"]');await p.waitForTimeout(200);
  ok(await p.$('[data-go=APPROVED]')===null,tag+' الوكيل لا يعتمد نهائياً');
  await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
  // موجه المتوسط والثانوي (dar1)
  await relog(p,url,'dar1','كلمة مرور');
- ok((await p.$$eval('[data-cls]',e=>e.length))===8,tag+' dar1 موجه المتوسط والثانوي يرى 8 فصول');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===15,tag+' dar1 موجه المتوسط والثانوي يرى 15 شعبة');
  ok(await p.$('.ub')===null,tag+' موجه المتوسط لا يرى شريط الفريق');
  // وكيل المتوسط والثانوي
  await relog(p,url,'dep1','admin148');
  const cl=await p.$$eval('[data-cls]',e=>e.map(x=>x.dataset.cls));
- ok(cl.length===8&&cl.every(c=>c.includes('م')||c.includes('ث')),tag+' dep1/admin148 وكيل المتوسط والثانوي: يرى 8 فصول');
+ ok(cl.length===15&&cl.every(c=>/المتوسط|الثانوي/.test(c)),tag+' dep1/admin148 وكيل المتوسط والثانوي: يرى 15 شعبة');
  ok((await p.textContent('.hero .pl.act b'))==='0',tag+' وكيل المتوسط: بانتظارك 0');
  const stagesRows=await p.$$eval('.dt tbody tr',e=>e.length);ok(stagesRows===3,tag+' جدول المتابعة: المتوسط والثانوي + إجمالي');
  // المدير
  await relog(p,url,'mgr','min');
- ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' المدير يرى 19 فصلاً');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===23,tag+' المدير يرى 23 شعبة');
  ok(await p.$('.ub')!==null,tag+' المدير يرى شريط الفريق');
  await p.click('[data-flt=todo]');await p.waitForTimeout(200);
- await p.click('[data-stu="S-0001"]');await p.waitForTimeout(300);
+ await p.click('[data-stu="AHL-P-0001"]');await p.waitForTimeout(300);
  await p.click('[data-go=DRAFT]');await p.waitForTimeout(300);
  ok((await p.textContent('#msg')).includes('سبب'),tag+' الإعادة للمسودة بلا سبب مرفوضة');
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
@@ -53,7 +53,7 @@ async function suite(b,url,tag){
  
  // مهندس النظام
  await relog(p,url,'syseng','eng');
- ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' syseng يرى 19 فصلاً');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===23,tag+' syseng يرى 23 شعبة');
  ok(await p.$('#reset')!==null&&await p.$('#audit')!==null,tag+' syseng يرى التصفير وسجل التدقيق');
  ok((await p.textContent('#app')).includes('ملاحظات الصيانة'),tag+' syseng يرى ملاحظات الصيانة');
  await relog(p,url,'mgr','min');
@@ -102,7 +102,7 @@ async function dd(b,url,tag){
  await p.selectOption('#lr','counselor');
  // الموجه (متوسط)
  await pick_(p,'counselor','middle');
- ok((await p.$$eval('[data-cls]',e=>e.length))===6,tag+' الموجه (متوسط) يرى 6 فصول فقط');
+ ok((await p.$$eval('[data-cls]',e=>e.length))===9,tag+' الموجه (متوسط) يرى 9 شعب فقط');
  cb=await bar();ok(cb.pos==='fixed'&&cb.vis&&await p.$$eval('#clk',e=>e.length)===1,tag+' شريط التاريخ والوقت ثابت أيضاً في الصفحة الرئيسية ولا يتكرر');
  const guard=async(want)=>p.evaluate(()=>{const el=document.querySelector('.sheet');const mk=t=>{const e=new Event(t,{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented;};const k=new KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true,cancelable:true});el.dispatchEvent(k);return{us:getComputedStyle(el).userSelect,copy:mk('copy'),ctx:mk('contextmenu'),sel:mk('selectstart'),key:k.defaultPrevented};});
  let g=await guard();ok(g.us==='none'&&g.copy&&g.ctx&&g.sel&&g.key,tag+' غير المدير: التحديد والنسخ وقائمة الزر الأيمن واختصار Ctrl+C كلها ممنوعة '+JSON.stringify(g));
@@ -110,18 +110,18 @@ async function dd(b,url,tag){
  // إرسال تقرير من الابتدائي
  await p.click('#logout');await p.waitForSelector('#lf');
  await pick_(p,'counselor','primary');
- await p.evaluate(async()=>{await pick('S-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
+ await p.evaluate(async()=>{await pick('AHL-P-0001');await toggle('strength',S.lib.find(l=>l.category==='strength').text);await toggle('improve',S.lib.find(l=>l.category==='improve').text);await toggle('recommend',S.lib.find(l=>l.category==='recommend').text);});
  await p.click('[data-go=SUBMITTED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-SUBMITTED'))==='بانتظار الوكيل',tag+' الموجه يرسل للوكيل');
  await p.click('#logout');await p.waitForSelector('#lf');
  await pick_(p,'deputy','middle');ok((await p.textContent('.hero .pl.act b'))==='0',tag+' وكيل المتوسط: بانتظارك 0');
  await p.click('#logout');await p.waitForSelector('#lf');
  await pick_(p,'deputy','primary');ok((await p.textContent('.hero .pl.act b'))==='1',tag+' وكيل الابتدائي: بانتظارك 1');
- await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
+ await p.click('[data-stu="AHL-P-0001"]');await p.waitForTimeout(200);await p.click('[data-go=REVIEWED]');await p.waitForTimeout(300);
  await p.click('#logout');await p.waitForSelector('#lf');
- await pick_(p,'principal');ok((await p.$$eval('[data-cls]',e=>e.length))===19,tag+' المدير يرى 19 فصلاً');
+ await pick_(p,'principal');ok((await p.$$eval('[data-cls]',e=>e.length))===23,tag+' المدير يرى 23 شعبة');
  ok(await p.$('.ub')!==null&&await p.$('#audit')!==null&&await p.$('#reset')===null,tag+' المدير: شريط الفريق وسجل التدقيق دون التصفير');
- await p.click('[data-flt=todo]');await p.waitForTimeout(200);await p.click('[data-stu="S-0001"]');await p.waitForTimeout(200);
+ await p.click('[data-flt=todo]');await p.waitForTimeout(200);await p.click('[data-stu="AHL-P-0001"]');await p.waitForTimeout(200);
  await p.click('[data-go=APPROVED]');await p.waitForTimeout(300);await p.click('[data-go=PUBLISHED]');await p.waitForTimeout(300);
  ok((await p.textContent('.badge.b-PUBLISHED'))==='منشور',tag+' المدير يعتمد وينشر');
  await p.click('#logout');await p.waitForSelector('#lf');
