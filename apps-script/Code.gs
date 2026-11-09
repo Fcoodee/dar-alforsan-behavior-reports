@@ -2,7 +2,7 @@
  * تقرير الأداء السلوكي والأكاديمي — الخلفية (Google Sheets + Apps Script)
  *
  * سكربت مرتبط بالشيت (Container-bound). الشيت يملكه مدير النظام فقط ولا يُشارك مع المعلمين؛
- * الجميع يدخل عبر تطبيق الويب المقيّد بدومين المدرسة، والتصفية حسب القسم والمرحلة تتم هنا في الخادم.
+ * الجميع يدخل عبر تطبيق الويب (الوصول: أي شخص لديه حساب Google، وليس مقيّداً بالدومين)؛ الحماية في رمز كل دور، والتصفية حسب القسم والمرحلة تتم هنا في الخادم.
  *
  * الدخول: بحساب دور (اسم المستخدم = اسم الدور مثل «وكيل الابتدائي») ورمز دخول من ورقة Staff،
  * بلا بريد إلكتروني. تُعطى جلسة (token) تُحفظ في CacheService لست ساعات.
@@ -21,6 +21,7 @@ var MAX_CUSTOM_LEN = 120;
 var SESSION_SECONDS = 6 * 3600;
 var MAX_FAILS = 5;
 var LOCK_SECONDS = 60;
+var MAX_FAILS_ALL = 40;   // حدّ عام للمحاولات الخاطئة في الدقيقة عبر كل الحسابات (يحدّ من التخمين الموزّع)
 
 // أسماء الأعمدة المقبولة لكل مفتاح داخلي (الأولى هي الاسم المعتمد عند الإنشاء)
 var HDR = {
@@ -201,9 +202,12 @@ function api_login(username, pin) {
   var cache = CacheService.getScriptCache(), key = 'fail_' + trim_(username);
   var fails = parseInt(cache.get(key) || '0', 10);
   if (fails >= MAX_FAILS) throw new Error('محاولات كثيرة. حاول بعد دقيقة.');
+  var failsAll = parseInt(cache.get('fail_all') || '0', 10);
+  if (failsAll >= MAX_FAILS_ALL) throw new Error('محاولات كثيرة على النظام. حاول بعد دقيقة.');
   var s = staffRow_(username);
   if (!s || !pinOk_(s.pin, pin)) {
     cache.put(key, String(fails + 1), LOCK_SECONDS);
+    cache.put('fail_all', String(failsAll + 1), LOCK_SECONDS);
     throw new Error('بيانات الدخول غير صحيحة.');
   }
   cache.remove(key);
