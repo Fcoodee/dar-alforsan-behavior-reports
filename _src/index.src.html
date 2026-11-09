@@ -247,17 +247,24 @@ const Mock=(()=>{
   reset(){db={reports:{},audit:[]};save();}
  };
 })();
-const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي: الدخول بحساب دور + رمز، وجلسة token
+const API_URL='';
+const remoteCall=async(fn,...a)=>{
+ let r;try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args:a})});}
+ catch(e){throw new Error('تعذر الاتصال بالخادم. تحقق من الاتصال وحاول مجدداً.');}
+ let j;try{j=await r.json();}catch(e){throw new Error('استجابة غير صالحة من الخادم.');}
+ if(!j.ok)throw new Error(j.error||'خطأ في الخادم.');return j.value;};
+const gasCall=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
+const mkBackend=call=>{ // الدخول بحساب دور + رمز، وجلسة token (داخل Apps Script أو عن بعد من GitHub Pages)
  let token=null;try{token=sessionStorage.getItem('dfa_tok');}catch(e){}
- const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
  const au=(fn,...a)=>call(fn,token,...a);
  return{isMock:false,hasToken:()=>!!token,users:()=>call('api_users'),
   async login(u,p){const r=await call('api_login',u,p);token=r.token;try{sessionStorage.setItem('dfa_tok',token);}catch(e){}return r.user;},
   async logout(){try{await au('api_logout');}catch(e){}token=null;try{sessionStorage.removeItem('dfa_tok');}catch(e){}},
   as:()=>au('api_me'),me:()=>au('api_me'),students:()=>au('api_students'),library:()=>au('api_library'),
-  getReport:id=>au('api_getReport',id),saveReport:(id,i)=>au('api_saveReport',id,i),transition:(id,t,r)=>au('api_transition',id,t,r),audit:()=>au('api_audit'),stats:()=>au('api_stats'),reset(){}};
-})();
-const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
+  getReport:id=>au('api_getReport',id),saveReport:(id,i)=>au('api_saveReport',id,i),transition:(id,t,r)=>au('api_transition',id,t,r),audit:()=>au('api_audit'),stats:()=>au('api_stats'),reset(){}};};
+const Gas=mkBackend(gasCall);
+const Remote=API_URL?mkBackend(remoteCall):null;
+const B=(typeof google!=='undefined'&&google.script)?Gas:(Remote&&!/[?&]demo=1/.test(location.search))?Remote:Mock;
 
 /* ═════════ الحالة والواجهة ═════════ */
 const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student',stats:null,filter:'all'};

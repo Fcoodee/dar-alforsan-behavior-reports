@@ -24,7 +24,10 @@ global.LockService = { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }
 global.Utilities = { getUuid: () => crypto.randomUUID(), formatDate: d => d.toISOString(), DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
   computeDigest: (alg, t) => Array.from(crypto.createHash('sha256').update(t, 'utf8').digest()).map(b => b > 127 ? b - 256 : b) };
 global.Logger = { log() {} }; global.HtmlService = {};
-eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__api={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit};');
+global.ContentService = { createTextOutput: t => ({ t, setMimeType() { return this; }, getContent() { return this.t; } }), MimeType: { JSON: 'json' } };
+eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__apiFns={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit,doPost};');
+global.__api = global.__apiFns;
+global.__doPost = body => __apiFns.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).getContent();
 __api.setup();
 const DEMO = JSON.parse(fs.readFileSync(path.join(root, 'data.js'), 'utf8').match(/window\.DEMO=(\{.*\});/s)[1]);
 const AR = { primary: 'ابتدائي', middle: 'متوسط', secondary: 'ثانوي' };
@@ -102,6 +105,39 @@ ok(!chk.join(' ').includes('1111'), 'checkSetup لا يطبع الرموز');
   const allc2 = await p.$$eval('[data-cls]', e => e.map(x => x.textContent).join('|'));
   ok(/الابتدائي/.test(allc2) && /المتوسط/.test(allc2) && /الثانوي/.test(allc2) && await p.$('#audit') !== null, 'مدير النظام: كل المراحل وسجل التدقيق');
   ok((await p.evaluate(() => getComputedStyle(document.querySelector('.sheet')).userSelect)) !== 'none', 'مدير النظام يستطيع التحديد');
+
+  // ───── صفحة GitHub Pages الرئيسية تقرأ من القاعدة عبر doPost (طلبات fetch مُعترَضة) ─────
+  const pctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
+  const pp = await pctx.newPage(); const perrs = []; const seen = [];
+  pp.on('pageerror', e => perrs.push(e.message));
+  await pctx.route(/script\.google\.com\/macros\/s\/.+\/exec/, async route => {
+    const req = route.request(); seen.push({ m: req.method(), ct: req.headers()['content-type'] || '' });
+    if (req.method() !== 'POST') return route.fulfill({ status: 405, body: 'no' });
+    const body = req.postData(); const res = __doPost(body);
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: res });
+  });
+  const pageUrl = 'file://' + path.join(root, 'index.html');
+  const plogin = async (user, pin) => { await pp.goto(pageUrl); await pp.evaluate(() => sessionStorage.clear()); await pp.reload(); await pp.waitForSelector('#gu'); await pp.selectOption('#gu', user); await pp.fill('#gp', pin); await pp.click('#lf button'); await pp.waitForTimeout(800); };
+  await pp.goto(pageUrl); await pp.waitForSelector('#gu');
+  ok(JSON.stringify(await pp.$$eval('#gu option', e => e.map(x => x.textContent))).includes('وكيل الابتدائي'), 'Pages: قائمة المستخدمين تُقرأ من ورقة Staff عبر doPost');
+  ok(!(await pp.content()).includes('طالب 1') , 'Pages: لا بيانات تجريبية في الوضع الحي');
+  await plogin('موجه الابتدائي', 'خطأ');
+  ok((await pp.textContent('#lerr')).includes('غير صحيحة'), 'Pages: رمز خاطئ يُرفض من الخادم');
+  cacheMap.clear();
+  await plogin('موجه الابتدائي', '1111'); await pp.waitForSelector('.hero');
+  const pc = await pp.$$eval('[data-cls]', e => e.map(x => x.textContent));
+  ok(pc.length > 0 && pc.every(c => /الابتدائي/.test(c)), 'Pages: بعد الدخول تُقرأ شعب الابتدائي من القاعدة');
+  ok((await pp.$$eval('[data-stu]', e => e.length)) > 0, 'Pages: قائمة الطلاب مقروءة من ورقة Students');
+  const pid = await pp.evaluate(() => S.students[1].id);
+  await pp.evaluate(async id => { await pick(id); await toggle('strength', S.lib.find(l => l.category === 'strength').text); await toggle('improve', S.lib.find(l => l.category === 'improve').text); await toggle('recommend', S.lib.find(l => l.category === 'recommend').text); }, pid);
+  await pp.click('[data-go=SUBMITTED]'); await pp.waitForTimeout(600);
+  ok((await pp.textContent('.badge.b-SUBMITTED')) === 'بانتظار الوكيل', 'Pages: الإرسال يُكتب في ورقتي Reports وItems');
+  ok(seen.length > 5 && seen.every(x => x.m === 'POST' && /^text\/plain/.test(x.ct)), 'Pages: كل الطلبات POST بنوع text/plain (بلا preflight): ' + seen.length + ' طلباً');
+  await pp.click('#logout'); await pp.waitForSelector('#gu');
+  await plogin('وكيل الابتدائي', '2222'); await pp.waitForSelector('.hero');
+  ok((await pp.textContent('.hero .pl.act b')) === '1', 'Pages: شارة الوكيل تعكس حالة القاعدة (بانتظارك 1)');
+  ok(perrs.filter(e => !/ERR_TUNNEL|fonts/.test(e)).length === 0, 'Pages: لا أخطاء JavaScript ' + JSON.stringify(perrs));
+  await pctx.close();
   ok(errs.filter(e => !/ERR_TUNNEL|fonts/.test(e)).length === 0, 'لا أخطاء JavaScript ' + JSON.stringify(errs));
   console.log(out.join('\n')); await b.close(); process.exit(out.some(x => x.startsWith('فشل')) ? 1 : 0);
 })().catch(e => { console.log(out.join('\n')); console.log('ERR', e.message); process.exit(1); });

@@ -2,7 +2,7 @@
  * تقرير الأداء السلوكي والأكاديمي — الخلفية (Google Sheets + Apps Script)
  *
  * سكربت مرتبط بالشيت (Container-bound). الشيت يملكه مدير النظام فقط ولا يُشارك مع المعلمين؛
- * الجميع يدخل عبر تطبيق الويب (الوصول: أي شخص لديه حساب Google، وليس مقيّداً بالدومين)؛ الحماية في رمز كل دور، والتصفية حسب القسم والمرحلة تتم هنا في الخادم.
+ * الجميع يدخل عبر تطبيق الويب أو عبر صفحة GitHub Pages التي تستدعي doPost (الوصول: أي شخص، بلا تسجيل Google)؛ الحماية في رمز كل دور، والتصفية حسب القسم والمرحلة تتم هنا في الخادم.
  *
  * الدخول: بحساب دور (اسم المستخدم = اسم الدور مثل «وكيل الابتدائي») ورمز دخول من ورقة Staff،
  * بلا بريد إلكتروني. تُعطى جلسة (token) تُحفظ في CacheService لست ساعات.
@@ -510,6 +510,32 @@ function selfTest() {
   deleteRows_('Students', table_('Students').filter(function (r) { return /^TEST-/.test(trim_(r.id)); }).map(function (r) { return r._row; }));
   Logger.log(log.join('\n'));
   return log;
+}
+
+
+/* ───────────── واجهة JSON للصفحة المستضافة على GitHub Pages ───────────── */
+
+// الدوال المسموح استدعاؤها عن بعد (قائمة بيضاء). الوسيط الأول للمحمية دائماً token.
+var API_MAP = { api_users: api_users, api_login: api_login, api_logout: api_logout, api_me: api_me, api_students: api_students,
+                api_library: api_library, api_getReport: api_getReport, api_saveReport: api_saveReport, api_transition: api_transition,
+                api_stats: api_stats, api_audit: api_audit };
+
+/**
+ * يستقبل POST بنص JSON: {"fn":"api_login","args":["اسم","رمز"]} (Content-Type: text/plain لتجنّب طلب preflight)
+ * ويعيد {ok:true,value} أو {ok:false,error}. لا يُسرَّب أي أثر خطأ.
+ */
+function doPost(e) {
+  var out;
+  try {
+    var raw = (e && e.postData && e.postData.contents) || '';
+    if (raw.length > 200000) throw new Error('الطلب كبير.');
+    var req = JSON.parse(raw || '{}');
+    if (!req.fn || !Object.prototype.hasOwnProperty.call(API_MAP, req.fn)) throw new Error('طلب غير مسموح.');
+    out = { ok: true, value: API_MAP[req.fn].apply(null, Array.isArray(req.args) ? req.args : []) };
+  } catch (err) {
+    out = { ok: false, error: String((err && err.message) || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /* ───────────── تطبيق الويب ───────────── */

@@ -1,6 +1,6 @@
 // اختبار التجاوب: node tests/responsive.js  (Chromium بمحاكاة أحجام وأجهزة؛ لا يغني عن تجربة Safari وFirefox الحقيقيين)
 const {chromium}=require('playwright');const path=require('path');
-const url='file://'+path.resolve(__dirname,'../index.html');
+const url='file://'+path.resolve(__dirname,'../index.html')+'?demo=1';
 const out=[];const ok=(c,m)=>out.push((c?'نجح: ':'فشل: ')+m);
 const SIZES=[['حاسوب 1440',{width:1440,height:900}],['حاسوب محمول 1280',{width:1280,height:720}],['لوحي عمودي 820',{width:820,height:1180,isMobile:true,hasTouch:true}],['لوحي أفقي 1180',{width:1180,height:820,isMobile:true,hasTouch:true}],['جوال 390',{width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:3}],['جوال صغير 360',{width:360,height:740,isMobile:true,hasTouch:true}]];
 (async()=>{

@@ -7,7 +7,13 @@
 const fs = require('fs'), path = require('path');
 const { obfuscate } = require('./obfuscate');
 const root = path.join(__dirname, '..');
-const src = fs.readFileSync(path.join(root, '_src', 'index.src.html'), 'utf8');
+// رابط واجهة JSON (نشر Apps Script). يمكن تغييره: node tools/build.js --api <URL> ؛ ولتعطيله (وضع تجريبي فقط): --api ''
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwvWFDSz0iA1N1g42vQhe4h3_qLtW9Dkj_Yh9WH_bNQJdmAu8HpA_K0Lg70t_ioUlKd/exec';
+const ai = process.argv.indexOf('--api');
+const API = ai > 0 ? process.argv[ai + 1] || '' : (process.env.API_URL !== undefined ? process.env.API_URL : DEFAULT_API);
+let src = fs.readFileSync(path.join(root, '_src', 'index.src.html'), 'utf8');
+if (!src.includes("const API_URL='';")) throw new Error('لم أجد const API_URL');
+src = src.replace("const API_URL='';", "const API_URL=" + JSON.stringify(API) + ";");
 const re = /<script>([\s\S]*?)<\/script>/g;
 const blocks = [...src.matchAll(re)];
 if (blocks.length !== 1) throw new Error('المتوقع سكربت داخلي واحد، وُجد ' + blocks.length);

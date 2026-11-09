@@ -135,10 +135,10 @@ async function dd(b,url,tag){
  const txt=fs.readFileSync(path.join(root,'access.txt'),'utf8');
  ok(!/,(048|admin48|admin148|min|eng|كلمة مرور),/.test(txt),'access.txt لا يحوي كلمات مرور صريحة');
  const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined});
- await suite(b,'file://'+path.join(root,'index.html')+'?auth=password','[file·كلمة مرور]');
- await dd(b,'file://'+path.join(root,'index.html'),'[file·قائمة]');
- const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html?auth=password','[http·كلمة مرور]');
- await dd(b,'http://127.0.0.1:'+srv.address().port+'/index.html','[http·قائمة]');srv.close();
+ await suite(b,'file://'+path.join(root,'index.html')+'?demo=1&auth=password','[file·كلمة مرور]');
+ await dd(b,'file://'+path.join(root,'index.html')+'?demo=1','[file·قائمة]');
+ const srv=await serve();await suite(b,'http://127.0.0.1:'+srv.address().port+'/index.html?demo=1&auth=password','[http·كلمة مرور]');
+ await dd(b,'http://127.0.0.1:'+srv.address().port+'/index.html?demo=1','[http·قائمة]');srv.close();
  console.log(out.join('\n'));
  await b.close();process.exit(out.some(x=>x.startsWith('فشل'))?1:0);
 })().catch(e=>{console.log(out.join('\n'));console.log('ERR',e.message);process.exit(1)});
