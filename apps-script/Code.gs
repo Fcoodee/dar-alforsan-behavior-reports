@@ -366,6 +366,32 @@ function audit_(who, action, target, detail) {
   appendObj_('Audit', { ts: new Date(), email: who, action: action, target: target, detail: detail || '' });
 }
 
+
+/* ───────────── تشخيص (آمن: لا أسماء طلاب ولا رموز) ───────────── */
+
+/** شغّلها إن لم تظهر أسماء الطلاب: تطبع كيف تُقرأ الأعمدة وكم طالباً يرى كل مستخدم. */
+function diagnose() {
+  var log = [], sh = SpreadsheetApp.getActive().getSheetByName('Students');
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  log.push('رؤوس Students → مفتاح: ' + head.map(function (h) {
+    var t = trim_(h), k = '؟';
+    Object.keys(HDR.Students).forEach(function (key) { if (HDR.Students[key].indexOf(t) >= 0) k = key; });
+    return '«' + t + '»→' + k;
+  }).join(' | '));
+  var rows = table_('Students');
+  log.push('صفوف Students المقروءة: ' + rows.length + ' | الفعّالة: ' + rows.filter(function (r) { return truthy_(r.active); }).length);
+  if (rows.length) log.push('مثال: فعّال=«' + rows[0].active + '» (' + typeof rows[0].active + ') | القسم=«' + rows[0].department + '» | المرحلة=«' + rows[0].stage + '»');
+  var by = {};
+  rows.forEach(function (r) { var k = norm_(DEPT_MAP, r.department) + '/' + norm_(STAGE_MAP, r.stage) + (truthy_(r.active) ? '' : ' (غير فعّال)'); by[k] = (by[k] || 0) + 1; });
+  log.push('التوزيع: ' + Object.keys(by).map(function (k) { return k + '=' + by[k]; }).join('، '));
+  table_('Staff').forEach(function (st) {
+    try { var c = ctxFor_(st.username); log.push(trim_(st.username) + ' → ' + c.role + ' | أقسام=' + c.departments.join('+') + ' | مراحل=' + c.stages.join('+') + ' | يرى ' + listStudents_(c).length + ' طالباً'); }
+    catch (e) { log.push(trim_(st.username) + ' → خطأ: ' + e.message); }
+  });
+  Logger.log(log.join('\n'));
+  return log;
+}
+
 /* ───────────── فحص الإعداد (آمن: لا يطبع رمزاً ولا اسم طالب) ───────────── */
 
 /**
