@@ -247,10 +247,15 @@ const Mock=(()=>{
   reset(){db={reports:{},audit:[]};save();}
  };
 })();
-const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي
- const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error(e.message||e)))[fn](...a));
- return{isMock:false,users:()=>[],as:()=>call('api_me'),me:()=>call('api_me'),students:()=>call('api_students'),library:()=>call('api_library'),
-  getReport:id=>call('api_getReport',id),saveReport:(id,i)=>call('api_saveReport',id,i),transition:(id,t,r)=>call('api_transition',id,t,r),audit:()=>call('api_audit'),stats:()=>call('api_stats'),reset(){}};
+const Gas=(()=>{ // يُستخدم داخل Apps Script الحقيقي: الدخول بحساب دور + رمز، وجلسة token
+ let token=null;try{token=sessionStorage.getItem('dfa_tok');}catch(e){}
+ const call=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
+ const au=(fn,...a)=>call(fn,token,...a);
+ return{isMock:false,hasToken:()=>!!token,users:()=>call('api_users'),
+  async login(u,p){const r=await call('api_login',u,p);token=r.token;try{sessionStorage.setItem('dfa_tok',token);}catch(e){}return r.user;},
+  async logout(){try{await au('api_logout');}catch(e){}token=null;try{sessionStorage.removeItem('dfa_tok');}catch(e){}},
+  as:()=>au('api_me'),me:()=>au('api_me'),students:()=>au('api_students'),library:()=>au('api_library'),
+  getReport:id=>au('api_getReport',id),saveReport:(id,i)=>au('api_saveReport',id,i),transition:(id,t,r)=>au('api_transition',id,t,r),audit:()=>au('api_audit'),stats:()=>au('api_stats'),reset(){}};
 })();
 const B=(typeof google!=='undefined'&&google.script)?Gas:Mock;
 
@@ -399,10 +404,28 @@ function say(t,k){S.msg=t;S.msgKind=k||'';const m=$('#msg');if(m){m.textContent=
 
 async function boot(){
  if(B.isMock){await Auth.load();const s0=Auth.session();if(!s0){showLogin();return;}await B.as(s0);}
- await loadAll();
+ else if(!B.hasToken()){await showGasLogin();return;}
+ try{await loadAll();}catch(e){if(!B.isMock&&/الجلسة|مصرّح/.test(e.message)){await B.logout();await showGasLogin(e.message);return;}throw e;}
  S.cls=classes()[0];
  render();
  if(S.cls){const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
+}
+async function showGasLogin(msg){
+ let users=[];try{users=await B.users();}catch(e){msg=msg||e.message;}
+ const IN='width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400;background:#fff';
+ const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
+ $('#app').innerHTML='<div class="card lg"><div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
+  '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب القسم الأهلي ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+
+  '<div class="lg-h">المستخدمون ومهامهم</div>'+
+  role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
+  role('وكيل شؤون الطلاب','يستلم التقارير المرسلة من مرحلته ويراجعها ويعتمدها، أو يعيدها للموجه.',['#fbecc8','#5c4306'])+
+  role('مدير المدرسة','يراجع ويعتمد نهائياً أو يعيد للمسودة بسبب، ويتابع سير العمل في كل المراحل.',['#d6e6f4','#123a5c'])+
+  '</div><form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
+  '<label style="font-weight:700">المستخدم<select id="gu" style="'+IN+'">'+users.map(u=>'<option value="'+esc(u.username)+'">'+esc(u.username)+'</option>').join('')+'</select></label>'+
+  '<label style="font-weight:700">رمز الدخول<input id="gp" type="password" autocomplete="current-password" required style="'+IN+'"></label>'+
+  '<button class="btn pri" type="submit">تسجيل الدخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form></div>';
+ $('#lf').onsubmit=async e=>{e.preventDefault();$('#lerr').textContent='';try{await B.login($('#gu').value,$('#gp').value);await boot();}catch(er){$('#lerr').textContent=er.message;}};
+ const f=$('#gp');if(f)f.focus();
 }
 async function loadAll(){S.user=await B.me();Guard.set(S.user.role!=='admin');S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
 async function switchUser(email){await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
@@ -513,7 +536,7 @@ function bind(){
  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  const r=$('#reason');if(r)r.oninput=()=>{S.reason=r.value;};
  const q=$('#q');if(q)q.oninput=()=>{S.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};
- const lo=$('#logout');if(lo)lo.onclick=Auth.logout;
+ const lo=$('#logout');if(lo)lo.onclick=B.isMock?Auth.logout:(async()=>{await B.logout();S.user=null;S.cur=null;await boot();});
  app.querySelectorAll('[data-flt]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.flt;render();});
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
