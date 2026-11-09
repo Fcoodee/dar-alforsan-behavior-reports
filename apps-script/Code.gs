@@ -193,9 +193,12 @@ function ctx_(token) {
   return ctxFor_(JSON.parse(raw).username);
 }
 
+/** الرمز مطلوب لمدير المدرسة ومدير النظام فقط؛ الموجه والوكيل بلا رمز (قرار المالك). */
+function needsPin_(s) { var r = roleInfo_(s.role).role; return r === 'principal' || r === 'admin'; }
+
 function api_users() {
   return table_('Staff').filter(function (s) { return truthy_(s.active) && trim_(s.username); })
-    .map(function (s) { return { username: trim_(s.username), role: trim_(s.role) }; });
+    .map(function (s) { return { username: trim_(s.username), role: trim_(s.role), needsPin: needsPin_(s) }; });
 }
 
 function api_login(username, pin) {
@@ -205,7 +208,7 @@ function api_login(username, pin) {
   var failsAll = parseInt(cache.get('fail_all') || '0', 10);
   if (failsAll >= MAX_FAILS_ALL) throw new Error('محاولات كثيرة على النظام. حاول بعد دقيقة.');
   var s = staffRow_(username);
-  if (!s || !pinOk_(s.pin, pin)) {
+  if (!s || (needsPin_(s) && !pinOk_(s.pin, pin))) {
     cache.put(key, String(fails + 1), LOCK_SECONDS);
     cache.put('fail_all', String(failsAll + 1), LOCK_SECONDS);
     throw new Error('بيانات الدخول غير صحيحة.');
@@ -418,7 +421,7 @@ function checkSetup() {
     if (!ds.length && ['counselor', 'deputy'].indexOf(ri.role) >= 0) ds = ['ahli'];
     ok(ds.every(function (d) { return ['ahli', 'diploma', 'special', 'all'].indexOf(d) >= 0; }), n + ': القسم معروف («' + trim_(s.department) + '»)');
     ok(ss.length > 0 && ss.every(function (x) { return STAGES.indexOf(x) >= 0 || x === 'all'; }), n + ': المرحلة معروفة («' + trim_(s.stage) + '»)');
-    ok(trim_(s.pin).length >= 4, n + ': رمز الدخول موجود (4 خانات فأكثر)');
+    if (needsPin_(s)) ok(trim_(s.pin).length >= 4, n + ': رمز الدخول موجود (4 خانات فأكثر)');
     if (trim_(s.pin) && trim_(s.pin).indexOf('sha256:') !== 0) warn(n + ': الرمز مخزّن صريحاً؛ الأفضل hashPin()');
     ok(['نعم', 'لا'].indexOf(trim_(s.active)) >= 0, n + ': «فعّال» نعم أو لا');
     if (truthy_(s.active)) {
@@ -482,10 +485,12 @@ function selfTest() {
     throws(function () { ctxFor_('TEST_معطّل'); }, 'الحساب المعطّل مرفوض');
     throws(function () { ctxFor_('لا أحد'); }, 'حساب غير موجود مرفوض');
     // الدخول برمز
-    var lg = api_login('TEST_موجه ابتدائي', '9999');
-    ok(!!lg.token && lg.user.role === 'counselor', 'الدخول برمز صحيح يعيد جلسة');
+    var lg = api_login('TEST_موجه ابتدائي', '');
+    ok(!!lg.token && lg.user.role === 'counselor', 'الموجه يدخل بلا رمز ويحصل على جلسة');
+    ok(api_users().filter(function (u) { return u.username === 'TEST_مدير'; })[0].needsPin === true && api_users().filter(function (u) { return u.username === 'TEST_موجه ابتدائي'; })[0].needsPin === false, 'الرمز مطلوب للمدير فقط');
     ok(api_me(lg.token).stage === 'primary', 'الجلسة تعيد مرحلة المستخدم');
-    throws(function () { api_login('TEST_موجه ابتدائي', 'خطأ'); }, 'رمز خاطئ مرفوض');
+    throws(function () { api_login('TEST_مدير', 'خطأ'); }, 'رمز المدير الخاطئ مرفوض');
+    throws(function () { api_login('TEST_مدير', ''); }, 'دخول المدير بلا رمز مرفوض');
     throws(function () { api_students('رمز-جلسة-وهمي'); }, 'جلسة غير صالحة مرفوضة');
     api_logout(lg.token);
     throws(function () { api_me(lg.token); }, 'الخروج يُنهي الجلسة');
