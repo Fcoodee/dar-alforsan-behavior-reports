@@ -41,6 +41,7 @@ const chk = __api.checkSetup();
 ok(!chk.some(l => l.startsWith('راجع')), 'checkSetup: لا بنود «راجع» على بيانات سليمة');
 ok(chk.some(l => l.startsWith('تنبيه')), 'checkSetup: ينبّه إلى مرحلة بلا موجه/وكيل أو رمز صريح');
 ok(!chk.join(' ').includes('1111'), 'checkSetup لا يطبع الرموز');
+const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(l => l.startsWith('فشل')), 'selfTest على Code.gs: بلا فشل ' + (Array.isArray(st) ? st.filter(l => l.startsWith('فشل')).join(' | ') : typeof st));
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -60,7 +61,18 @@ ok(!chk.join(' ').includes('1111'), 'checkSetup لا يطبع الرموز');
 
   await p.goto('file://' + path.join(root, 'apps-script', 'Index.html')); await p.waitForSelector('#gu');
   const names = await p.$$eval('#gu option', e => e.map(x => x.textContent));
-  ok(names.join('|') === 'موجه الابتدائي|وكيل الابتدائي|وكيل المتوسط|مدير المدرسة|مدير النظام', 'قائمة المستخدمين: أسماء الأدوار فقط (بلا رموز)');
+  ok(names.join('|') === 'موجه الابتدائي|وكيل الابتدائي|موجه المتوسط والثانوي — قيد التهيئة|وكيل المتوسط والثانوي — قيد التهيئة|وكيل المتوسط|مدير المدرسة|مدير النظام', 'قائمة القسم الأهلي: الأدوار فقط (بلا رموز) مع وسم غير المهيّأ');
+  ok((await p.$$('.dl img')).length === 3 && (await p.$$eval('#gd option', e => e.map(x => x.textContent))).join('|') === 'القسم الأهلي|قسم الدبلوما|قسم التربية الخاصة', 'ثلاثة شعارات أقسام وقائمة الأقسام');
+  await p.selectOption('#gd', 'diploma');
+  ok((await p.$$eval('#gu option', e => e.map(x => x.value))).join('|') === 'موجه قسم الدبلوما|وكيل قسم الدبلوما|مدير المدرسة|مدير النظام', 'قسم الدبلوما: دوراه + المدير والمهندس');
+  ok((await p.textContent('#lerr')).includes('قيد عمليات تهيئة قواعد البيانات'), 'دور قسم غير مهيّأ: رسالة قيد التهيئة');
+  await p.click('#lf button'); await p.waitForTimeout(300);
+  ok(await p.$('.hero') === null && (await p.textContent('#lerr')).includes('قيد عمليات تهيئة'), 'لا دخول إلى قسم غير مهيّأ');
+  await p.click('.dl[data-d=special]');
+  ok(await p.inputValue('#gd') === 'special' && (await p.$$eval('#gu option', e => e.length)) === 4, 'النقر على شعار القسم يختار القسم');
+  await p.selectOption('#gu', 'مدير المدرسة');
+  ok((await p.textContent('#lerr')) === '' && await p.isVisible('#gp'), 'المدير متاح في كل قسم ويطلب رمزاً');
+  await p.selectOption('#gd', 'ahli');
   ok(!(await p.content()).includes('1111') && !(await p.content()).includes('5555'), 'الرموز لا تظهر في الصفحة');
   await login('مدير المدرسة', 'خطأ');
   ok((await p.textContent('#lerr')).includes('غير صحيحة') && await p.$('.hero') === null, 'رمز المدير الخاطئ يُرفض ولا تُعرض بيانات');

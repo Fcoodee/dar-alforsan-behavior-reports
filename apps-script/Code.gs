@@ -51,7 +51,10 @@ var ROLE_MAP = { 'موجه طلابي': 'counselor', 'counselor': 'counselor', '
                  'مدير المدرسة': 'principal', 'principal': 'principal', 'مدير النظام': 'admin', 'admin': 'admin' };
 // أدوار بمسمى الوظيفة والمرحلة معاً (اسم الدور = اسم المستخدم): تُستنتج المرحلة منها إن تُركت خانة المرحلة فارغة
 var POS_MAP = { 'موجه الابتدائي': ['counselor', 'primary'], 'موجه المتوسط': ['counselor', 'middle'], 'موجه الثانوي': ['counselor', 'secondary'],
-                'وكيل الابتدائي': ['deputy', 'primary'], 'وكيل المتوسط': ['deputy', 'middle'], 'وكيل الثانوي': ['deputy', 'secondary'] };
+                'وكيل الابتدائي': ['deputy', 'primary'], 'وكيل المتوسط': ['deputy', 'middle'], 'وكيل الثانوي': ['deputy', 'secondary'],
+                'موجه المتوسط والثانوي': ['counselor', ['middle', 'secondary']], 'وكيل المتوسط والثانوي': ['deputy', ['middle', 'secondary']],
+                'موجه قسم الدبلوما': ['counselor', ['primary', 'middle', 'secondary'], 'diploma'], 'وكيل قسم الدبلوما': ['deputy', ['primary', 'middle', 'secondary'], 'diploma'],
+                'موجه قسم التربية الخاصة': ['counselor', ['primary', 'middle', 'secondary'], 'special'], 'وكيل قسم التربية الخاصة': ['deputy', ['primary', 'middle', 'secondary'], 'special'] };
 
 // الحالة الحالية -> { الحالة التالية: الأدوار المسموح لها بالنقلة }
 var TRANSITIONS = {
@@ -71,8 +74,9 @@ function list_(map, v) { return trim_(v).split(/[+،,]/).map(trim_).filter(Boole
 function truthy_(v) { return v === true || ['نعم', 'true', 'yes', 'y', '1'].indexOf(trim_(v).toLowerCase()) >= 0; }
 function roleInfo_(text) {
   var t = trim_(text);
-  if (POS_MAP[t]) return { role: POS_MAP[t][0], stage: POS_MAP[t][1] };
-  return { role: norm_(ROLE_MAP, t), stage: null };
+  var m = POS_MAP[t];
+  if (m) { var st = [].concat(m[1]); return { role: m[0], stage: st[0], stages: st, dept: m[2] || null }; }
+  return { role: norm_(ROLE_MAP, t), stage: null, stages: [], dept: null };
 }
 
 /** يقرأ ورقة كمصفوفة كائنات بمفاتيح داخلية، مع رقم الصف _row. */
@@ -129,6 +133,20 @@ function deleteRows_(name, rows) {
 
 /* ───────────── الإعداد (يُشغَّل مرة واحدة من مدير النظام) ───────────── */
 
+/** يضيف حسابات الأدوار الناقصة إلى Staff (بلا رموز؛ المدير والمهندس يُضافان يدوياً برمز). آمنة للتكرار. */
+function addMissingStaff() {
+  var roles = [['موجه الابتدائي', 'الأهلي'], ['وكيل الابتدائي', 'الأهلي'], ['موجه المتوسط والثانوي', 'الأهلي'], ['وكيل المتوسط والثانوي', 'الأهلي'],
+               ['موجه قسم الدبلوما', 'الدبلوما الأمريكية'], ['وكيل قسم الدبلوما', 'الدبلوما الأمريكية'],
+               ['موجه قسم التربية الخاصة', 'التربية الخاصة'], ['وكيل قسم التربية الخاصة', 'التربية الخاصة']];
+  var have = {}; table_('Staff').forEach(function (x) { have[trim_(x.username)] = 1; });
+  var added = [];
+  roles.forEach(function (r) {
+    if (have[r[0]]) return;
+    appendObj_('Staff', { username: r[0], role: r[0], department: r[1], stage: '', pin: '', active: 'نعم' }); added.push(r[0]);
+  });
+  Logger.log(added.length ? 'أُضيف: ' + added.join('، ') : 'كل حسابات الأدوار موجودة.');
+}
+
 function setup() {
   var ss = SpreadsheetApp.getActive(), msgs = [];
   Object.keys(HDR_ORDER).forEach(function (name) {
@@ -177,12 +195,16 @@ function staffRow_(username) {
 function ctxFor_(username) {
   var s = staffRow_(username);
   if (!s) throw new Error('الحساب غير مصرّح له.');
+  return ctxOfRow_(s);
+}
+
+function ctxOfRow_(s) {
   var ri = roleInfo_(s.role);
   if (ROLES.indexOf(ri.role) < 0) throw new Error('دور غير معروف في Staff.');
   var stages = list_(STAGE_MAP, s.stage), depts = list_(DEPT_MAP, s.department);
-  if (!stages.length && ri.stage) stages = [ri.stage];
+  if (!stages.length && ri.stages.length) stages = ri.stages.slice();
   if (['principal', 'admin'].indexOf(ri.role) >= 0) { if (!stages.length) stages = ['all']; if (!depts.length) depts = ['all']; }
-  else if (!depts.length) depts = ['ahli'];
+  else if (!depts.length) depts = [ri.dept || 'ahli'];
   if (!stages.length) throw new Error('حساب بلا مرحلة.');
   return { email: trim_(s.username), username: trim_(s.username), name: trim_(s.name) || trim_(s.username), role: ri.role, departments: depts, stages: stages };
 }
@@ -196,9 +218,18 @@ function ctx_(token) {
 /** الرمز مطلوب لمدير المدرسة ومدير النظام فقط؛ الموجه والوكيل بلا رمز (قرار المالك). */
 function needsPin_(s) { var r = roleInfo_(s.role).role; return r === 'principal' || r === 'admin'; }
 
+/** قائمة الدخول: الاسم والدور والقسم، وهل يلزم رمز، وهل القسم/الدور مهيّأ (فيه طلاب ضمن صلاحيته). */
 function api_users() {
+  var studs = table_('Students').filter(function (x) { return truthy_(x.active); });
   return table_('Staff').filter(function (s) { return truthy_(s.active) && trim_(s.username); })
-    .map(function (s) { return { username: trim_(s.username), role: trim_(s.role), needsPin: needsPin_(s) }; });
+    .map(function (s) {
+      var ready = false, dept = 'all';
+      try {
+        var c = ctxOfRow_(s); dept = c.departments.length === 1 ? c.departments[0] : 'all';
+        ready = c.role === 'principal' || c.role === 'admin' || studs.some(function (x) { return canSee_(c, x); });
+      } catch (e) {}
+      return { username: trim_(s.username), role: trim_(s.role), needsPin: needsPin_(s), dept: dept, ready: ready };
+    });
 }
 
 function api_login(username, pin) {
@@ -215,6 +246,8 @@ function api_login(username, pin) {
   }
   cache.remove(key);
   var ctx = ctxFor_(username);
+  if (ctx.role !== 'principal' && ctx.role !== 'admin' && !table_('Students').some(function (x) { return truthy_(x.active) && canSee_(ctx, x); }))
+    throw new Error('القسم المطلوب قيد عمليات تهيئة قواعد البيانات.');
   var token = Utilities.getUuid() + Utilities.getUuid().replace(/-/g, '');
   cache.put('tok_' + token, JSON.stringify({ username: ctx.username }), SESSION_SECONDS);
   audit_(ctx.username, 'LOGIN', '-', '');
@@ -417,8 +450,8 @@ function checkSetup() {
     ok(!seen[u], n + ': اسم المستخدم غير مكرر'); seen[u] = 1;
     ok(ROLES.indexOf(ri.role) >= 0, n + ': الدور معروف («' + trim_(s.role) + '»)');
     var ds = list_(DEPT_MAP, s.department), ss = list_(STAGE_MAP, s.stage);
-    if (!ss.length && ri.stage) ss = [ri.stage];
-    if (!ds.length && ['counselor', 'deputy'].indexOf(ri.role) >= 0) ds = ['ahli'];
+    if (!ss.length && ri.stages.length) ss = ri.stages.slice();
+    if (!ds.length && ['counselor', 'deputy'].indexOf(ri.role) >= 0) ds = [ri.dept || 'ahli'];
     ok(ds.every(function (d) { return ['ahli', 'diploma', 'special', 'all'].indexOf(d) >= 0; }), n + ': القسم معروف («' + trim_(s.department) + '»)');
     ok(ss.length > 0 && ss.every(function (x) { return STAGES.indexOf(x) >= 0 || x === 'all'; }), n + ': المرحلة معروفة («' + trim_(s.stage) + '»)');
     if (needsPin_(s)) ok(trim_(s.pin).length >= 4, n + ': رمز الدخول موجود (4 خانات فأكثر)');
@@ -469,6 +502,9 @@ function selfTest() {
   appendObj_('Staff', { username: 'TEST_موجه دبلوما', role: 'موجه طلابي', department: 'الدبلوما الأمريكية', stage: 'ابتدائي', pin: '9999', active: 'نعم' });
   appendObj_('Staff', { username: 'TEST_مدير', role: 'مدير المدرسة', department: 'الكل', stage: 'الكل', pin: '9999', active: 'نعم' });
   appendObj_('Staff', { username: 'TEST_معطّل', role: 'موجه الابتدائي', department: 'الأهلي', stage: '', pin: '9999', active: 'لا' });
+  appendObj_('Staff', { username: 'TEST_موجه م/ث', role: 'موجه المتوسط والثانوي', department: '', stage: '', pin: '', active: 'نعم' });
+  appendObj_('Staff', { username: 'TEST_موجه خاصة', role: 'موجه قسم التربية الخاصة', department: '', stage: '', pin: '', active: 'نعم' });
+  appendObj_('Staff', { username: 'TEST_وكيل دبلوما', role: 'وكيل قسم الدبلوما', department: '', stage: '', pin: '', active: 'نعم' });
   appendObj_('Students', { id: 'TEST-1', department: 'الأهلي', stage: 'ابتدائي', grade: 'الثالث الابتدائي', section: 'أ', name: 'TEST_طالب ابتدائي', active: 'نعم' });
   appendObj_('Students', { id: 'TEST-2', department: 'الأهلي', stage: 'متوسط', grade: 'الأول المتوسط', section: 'أ', name: 'TEST_طالب متوسط', active: 'نعم' });
   appendObj_('Students', { id: 'TEST-3', department: 'الدبلوما الأمريكية', stage: 'ابتدائي', grade: 'Grade 3', section: 'A', name: 'TEST_طالب دبلوما', active: 'نعم' });
@@ -485,6 +521,11 @@ function selfTest() {
     throws(function () { ctxFor_('TEST_معطّل'); }, 'الحساب المعطّل مرفوض');
     throws(function () { ctxFor_('لا أحد'); }, 'حساب غير موجود مرفوض');
     // الدخول برمز
+    ok(ids(ctxFor_('TEST_موجه م/ث')) === 'TEST-2', 'موجه المتوسط والثانوي يرى المتوسط (أهلي) فقط');
+    ok(ids(ctxFor_('TEST_وكيل دبلوما')) === 'TEST-3', 'وكيل قسم الدبلوما يرى الدبلوما فقط');
+    throws(function () { api_login('TEST_موجه خاصة', ''); }, 'قسم التربية الخاصة بلا طلاب: رسالة قيد التهيئة');
+    var us = api_users(); function uf(n) { return us.filter(function (u) { return u.username === n; })[0]; }
+    ok(uf('TEST_موجه خاصة').ready === false && uf('TEST_موجه خاصة').dept === 'special' && uf('TEST_موجه م/ث').ready === true, 'api_users تعيد ready وdept');
     var lg = api_login('TEST_موجه ابتدائي', '');
     ok(!!lg.token && lg.user.role === 'counselor', 'الموجه يدخل بلا رمز ويحصل على جلسة');
     ok(api_users().filter(function (u) { return u.username === 'TEST_مدير'; })[0].needsPin === true && api_users().filter(function (u) { return u.username === 'TEST_موجه ابتدائي'; })[0].needsPin === false, 'الرمز مطلوب للمدير فقط');

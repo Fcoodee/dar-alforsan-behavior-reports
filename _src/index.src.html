@@ -154,6 +154,10 @@ body{padding-bottom:52px}
 .busy .bx{background:#fff;border-radius:12px;padding:22px 24px;width:min(420px,100%);box-shadow:0 10px 40px rgba(0,0,0,.3);text-align:center;font-weight:700;color:#14425f}
 .busy .ind{margin-top:14px;background:#d6e6f4}.busy .ind i{background:#14577a}
 @media print{.busy{display:none!important}}
+.dlogos{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.dl{display:flex;flex-direction:column;align-items:center;gap:4px;width:30%;min-width:92px;max-width:150px;padding:8px 6px;border:2px solid #d3dde5;border-radius:10px;background:#fff;cursor:pointer;font:inherit;font-weight:700;font-size:12px;color:#14425f;min-height:44px}
+.dl img{width:100%;height:64px;object-fit:contain}
+.dl[aria-pressed=true]{border-color:#14577a;background:#eaf3f9}
 @media (prefers-reduced-motion:reduce){.ind i{animation-duration:3.2s}.nt-ic{animation:none}}
 @media (max-width:767px){.clkbar{font-size:12px;gap:2px 10px}body{padding-bottom:64px}}
 @media print{.clkbar{display:none!important}}
@@ -432,25 +436,44 @@ async function boot(){
  render();
  if(S.cls){const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
 }
+const DEPTS=[
+ {k:'ahli',n:'القسم الأهلي',logo:'assets/logo.png',roles:['موجه الابتدائي','وكيل الابتدائي','موجه المتوسط والثانوي','وكيل المتوسط والثانوي']},
+ {k:'diploma',n:'قسم الدبلوما',logo:'assets/logo_diploma.png',roles:['موجه قسم الدبلوما','وكيل قسم الدبلوما']},
+ {k:'special',n:'قسم التربية الخاصة',logo:'assets/logo_special.png',roles:['موجه قسم التربية الخاصة','وكيل قسم التربية الخاصة']}];
+const SHARED_ROLES=['مدير المدرسة','مدير النظام'];
+const PREP_MSG='القسم المطلوب قيد عمليات تهيئة قواعد البيانات.';
 async function showGasLogin(msg){
  let users=[];try{users=await B.users();}catch(e){msg=msg||e.message;}
+ const by={};users.forEach(u=>by[u.username]=u);
  const IN='width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400;background:#fff';
  const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
+ const deptRoles=d=>{const base=DEPTS.find(x=>x.k===d).roles.concat(users.filter(u=>u.dept===d&&!DEPTS.some(x=>x.roles.includes(u.username))&&!SHARED_ROLES.includes(u.username)).map(u=>u.username));
+  return base.concat(SHARED_ROLES);};
+ const logos='<div class="dlogos" role="group" aria-label="أقسام المدرسة">'+DEPTS.map(d=>'<button type="button" class="dl" data-d="'+d.k+'" aria-pressed="false"><img src="'+d.logo+'" alt="شعار '+d.n+'"><span>'+d.n+'</span></button>').join('')+'</div>';
  $('#app').innerHTML='<div class="card lg">'+noticeHtml()+'<div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
-  '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب القسم الأهلي ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+
+  '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب أقسام المدرسة (الأهلي · الدبلوما · التربية الخاصة) ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+logos+
   '<div class="lg-h">المستخدمون ومهامهم</div>'+
-  role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
-  role('وكيل شؤون الطلاب','يستلم التقارير المرسلة من مرحلته ويراجعها ويعتمدها، أو يعيدها للموجه.',['#fbecc8','#5c4306'])+
-  role('مدير المدرسة','يراجع ويعتمد نهائياً أو يعيد للمسودة بسبب، ويتابع سير العمل في كل المراحل.',['#d6e6f4','#123a5c'])+
+  role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته أو قسمه ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
+  role('وكيل شؤون الطلاب','يستلم التقارير المرسلة من مرحلته أو قسمه ويراجعها ويعتمدها، أو يعيدها للموجه.',['#fbecc8','#5c4306'])+
+  role('مدير المدرسة','واحد لكل الأقسام: يراجع ويعتمد نهائياً أو يعيد للمسودة بسبب، ويتابع سير العمل في كل المراحل.',['#d6e6f4','#123a5c'])+
   '</div><form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
-  '<label style="font-weight:700">المستخدم<select id="gu" style="'+IN+'">'+users.map(u=>'<option value="'+esc(u.username)+'">'+esc(u.username)+'</option>').join('')+'</select></label>'+
+  '<label style="font-weight:700">القسم<select id="gd" style="'+IN+'">'+DEPTS.map(d=>'<option value="'+d.k+'">'+d.n+'</option>').join('')+'</select></label>'+
+  '<label style="font-weight:700">المستخدم (الدور)<select id="gu" style="'+IN+'"></select></label>'+
   '<label id="gpw" style="font-weight:700">رمز الدخول<input id="gp" type="password" autocomplete="current-password" style="'+IN+'"></label>'+
   '<button class="btn pri" type="submit">تسجيل الدخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form></div>';
- const needPin=()=>{const u=users.find(x=>x.username===$('#gu').value);return !u||u.needsPin!==false;};
- const sync=()=>{const n=needPin();$('#gpw').style.display=n?'':'none';$('#gp').required=n;if(!n)$('#gp').value='';};
- $('#gu').onchange=sync;sync();
- $('#lf').onsubmit=async e=>{e.preventDefault();$('#lerr').textContent='';try{await B.login($('#gu').value,needPin()?$('#gp').value:'');await boot();}catch(er){$('#lerr').textContent=er.message;}};
- const f=needPin()?$('#gp'):$('#gu');if(f)f.focus();
+ const notReady=()=>{const u=by[$('#gu').value];const sh=SHARED_ROLES.includes($('#gu').value);return !u||(!sh&&u.ready===false);};
+ const needPin=()=>{const u=by[$('#gu').value];return !u||u.needsPin!==false;};
+ const sync=()=>{const n=needPin()&&!notReady();$('#gpw').style.display=n?'':'none';$('#gp').required=n;if(!n)$('#gp').value='';
+  $('#lerr').textContent=notReady()?PREP_MSG:'';};
+ const setDept=d=>{$('#gd').value=d;document.querySelectorAll('.dl').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===d)));
+  $('#gu').innerHTML=deptRoles(d).map(r=>{const u=by[r],sh=SHARED_ROLES.includes(r),np=!u||(!sh&&u.ready===false);return '<option value="'+esc(r)+'">'+esc(r)+(np?' — قيد التهيئة':'')+'</option>';}).join('');sync();};
+ $('#gd').onchange=()=>setDept($('#gd').value);
+ document.querySelectorAll('.dl').forEach(b=>b.onclick=()=>setDept(b.dataset.d));
+ $('#gu').onchange=sync;
+ setDept(DEPTS[0].k);if(msg)$('#lerr').textContent=msg;
+ $('#lf').onsubmit=async e=>{e.preventDefault();$('#lerr').textContent='';if(notReady()){$('#lerr').textContent=PREP_MSG;return;}
+  try{await B.login($('#gu').value,needPin()?$('#gp').value:'');await boot();}catch(er){$('#lerr').textContent=er.message;}};
+ const f=$('#gu');if(f)f.focus();
 }
 async function loadAll(){S.user=await B.me();Guard.set(S.user.role!=='admin');S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
 async function switchUser(email){await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
