@@ -79,6 +79,7 @@ async function dd(b,url,tag){
  ok(await p.$('#lu')===null&&await p.$('#lp')===null,tag+' لا حقول اسم مستخدم/كلمة مرور في وضع القائمة');
  const nt=await p.textContent('.notice');
  ok(nt.includes('جارٍ تهيئة قاعدة بيانات الطلاب للأقسام')&&nt.includes('القسم الأهلي')&&nt.includes('قسم الدبلوما')&&nt.includes('قسم التربية الخاصة')&&nt.includes('08-11-2026'),tag+' مربع الإعلام: التهيئة والأقسام الثلاثة وتاريخ البدء');
+ ok(nt.includes('09-11-2026')&&nt.includes('تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )')&&nt.includes('اكتملت التهيئة'),tag+' آخر تحديث: تهيئة قاعدة بيانات القسم الأهلي بتاريخ 09-11-2026');
  ok((await p.$eval('.ind i',e=>getComputedStyle(e).animationName))!=='none'&&(await p.$eval('.ind',e=>e.getAttribute('role')))==='progressbar',tag+' شريط التقدم متحرك بلا توقف');
  const x1=await p.$eval('.ind i',e=>e.getBoundingClientRect().left);await p.waitForTimeout(400);const x2=await p.$eval('.ind i',e=>e.getBoundingClientRect().left);
  ok(x1!==x2,tag+' الشريط يتحرك فعلاً ('+Math.round(x1)+'→'+Math.round(x2)+')');
