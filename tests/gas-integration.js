@@ -18,14 +18,15 @@ Sheet.prototype = {
   getDataRange() { const s = this; return { getValues() { const w = s.getLastColumn(); return s.d.map(r => { const x = r.slice(); while (x.length < w) x.push(''); return x.map(v => v === undefined ? '' : v); }); } }; }
 };
 const crypto = require('crypto'); const cacheMap = new Map();
-global.CacheService = { getScriptCache: () => ({ get: k => cacheMap.has(k) ? cacheMap.get(k) : null, put: (k, v) => { cacheMap.set(k, v); }, remove: k => { cacheMap.delete(k); } }) };
+global.CacheService = { getScriptCache: () => ({ get: k => cacheMap.has(k) ? cacheMap.get(k) : null, put: (k, v) => { cacheMap.set(k, v); }, remove: k => { cacheMap.delete(k); },
+  getAll: ks => { const o = {}; ks.forEach(k => { if (cacheMap.has(k)) o[k] = cacheMap.get(k); }); return o; }, putAll: (o) => { Object.keys(o).forEach(k => { if (String(o[k]).length > 100000) throw new Error('value too large'); cacheMap.set(k, o[k]); }); }, removeAll: ks => { ks.forEach(k => cacheMap.delete(k)); } }) };
 global.SpreadsheetApp = { getActive: () => ({ getSheetByName: n => sheets[n] || (data[n] ? (sheets[n] = new Sheet(n)) : null), insertSheet: n => sheets[n] = new Sheet(n) }) };
 global.LockService = { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) };
 global.Utilities = { getUuid: () => crypto.randomUUID(), formatDate: d => d.toISOString(), DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
   computeDigest: (alg, t) => Array.from(crypto.createHash('sha256').update(t, 'utf8').digest()).map(b => b > 127 ? b - 256 : b) };
 global.Logger = { log() {} }; global.HtmlService = {};
 global.ContentService = { createTextOutput: t => ({ t, setMimeType() { return this; }, getContent() { return this.t; } }), MimeType: { JSON: 'json' } };
-eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__apiFns={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit,doPost};');
+eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__apiFns={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit,api_boot,doPost};');
 global.__api = global.__apiFns;
 global.__doPost = body => __apiFns.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).getContent();
 __api.setup();
@@ -154,6 +155,12 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
     await pp.waitForTimeout(1800);
     ok(!(await pp.isVisible('.busy.on')), 'Pages: مربع الانتظار يختفي بعد انتهاء العملية');
   } else ok(false, 'لا توجد أزرار طلاب لاختبار مربع الانتظار');
+  slowMs = 1500;
+  await pp.click('input[data-cat=strength] >> nth=1');
+  await pp.waitForTimeout(250);
+  ok(await pp.isChecked('input[data-cat=strength] >> nth=1') && !(await pp.isVisible('.busy.on')), 'حفظ متفائل: العبارة تُحدَّد فوراً دون مربع انتظار حاجب رغم بطء الخادم');
+  await pp.waitForTimeout(2600);
+  ok((await pp.textContent('#msg')).includes('تم الحفظ'), 'الحفظ يكتمل في الخلفية ويظهر «تم الحفظ»');
   slowMs = 0;
   const pc = await pp.$$eval('[data-cls]', e => e.map(x => x.textContent));
   ok(pc.length > 0 && pc.every(c => /الابتدائي/.test(c)), 'Pages: بعد الدخول تُقرأ شعب الابتدائي من القاعدة');

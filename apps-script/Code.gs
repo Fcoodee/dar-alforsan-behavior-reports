@@ -120,6 +120,87 @@ function table_(name) {
   return out;
 }
 
+/* ───────────── ذاكرة مؤقتة (تقلّل قراءة الأوراق) ─────────────
+   Staff 60ث · Students 300ث · Library 600ث · Reports 90ث (وتُمسح عند كل كتابة). تعديل الورقة يدوياً يظهر خلال هذه المدد، أو شغّل refreshCache(). */
+var CHUNK = 40000;
+function cget_(key) {
+  var c = CacheService.getScriptCache(), n = parseInt(c.get(key + '#n') || '0', 10);
+  if (!n) return null;
+  var keys = []; for (var i = 0; i < n; i++) keys.push(key + '#' + i);
+  var m = c.getAll(keys), str = '';
+  for (var j = 0; j < n; j++) { if (m[keys[j]] === undefined || m[keys[j]] === null) return null; str += m[keys[j]]; }
+  try { return JSON.parse(str); } catch (e) { return null; }
+}
+function cput_(key, val, ttl) {
+  var str = JSON.stringify(val), o = {}, n = 0;
+  for (var i = 0; i < str.length; i += CHUNK) { o[key + '#' + n] = str.slice(i, i + CHUNK); n++; }
+  o[key + '#n'] = String(n);
+  try { CacheService.getScriptCache().putAll(o, ttl); } catch (e) {}
+}
+function cdel_(key) {
+  var c = CacheService.getScriptCache(), n = parseInt(c.get(key + '#n') || '0', 10), keys = [key + '#n'];
+  for (var i = 0; i < n; i++) keys.push(key + '#' + i);
+  try { c.removeAll(keys); } catch (e) {}
+}
+function tableC_(name, ttl) {
+  var k = 'tbl_' + name, v = cget_(k);
+  if (v) return v;
+  v = table_(name); cput_(k, v, ttl); return v;
+}
+function bust_(name) { cdel_('tbl_' + name); }
+function bustAll_() { ['Staff', 'Students', 'Library', 'Reports'].forEach(bust_); CacheService.getScriptCache().remove('cfg_period'); }
+/** شغّلها من المحرر بعد تعديل الأوراق يدوياً لتظهر التغييرات فوراً. */
+function refreshCache() { bustAll_(); Logger.log('تم مسح الذاكرة المؤقتة.'); }
+
+/** صفوف بنود تقرير معيّن (مرتبة تصاعدياً): TextFinder إن توفّر، وإلا مسح الورقة. */
+function itemRows_(sh, head, id) {
+  var c = 0; head.forEach(function (h, j) { if (HDR.Items.reportId.indexOf(trim_(h)) >= 0) c = j + 1; });
+  var lr = sh.getLastRow(); if (lr < 2 || !c) return [];
+  try {
+    var rg = sh.getRange(2, c, lr - 1, 1);
+    if (typeof rg.createTextFinder === 'function') {
+      return rg.createTextFinder(id).matchEntireCell(true).findAll().map(function (r) { return r.getRow(); }).sort(function (a, b) { return a - b; });
+    }
+  } catch (e) {}
+  return table_('Items').filter(function (i) { return i.reportId === id; }).map(function (i) { return i._row; }).sort(function (a, b) { return a - b; });
+}
+
+/** يكتب بنود التقرير دفعة واحدة: يعيد استعمال صفوفه القديمة، ويضيف الباقي في آخر الورقة، ويُفرغ الزائد. */
+function writeItems_(id, clean) {
+  var sh = SpreadsheetApp.getActive().getSheetByName('Items');
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0], width = head.length;
+  var old = itemRows_(sh, head, id), targets = old.slice(0, clean.length), next = sh.getLastRow() + 1, writes = {};
+  while (targets.length < clean.length) targets.push(next++);
+  function rowArr(c) {
+    return head.map(function (h) {
+      var t = trim_(h), v = '';
+      Object.keys(HDR.Items).forEach(function (k) { if (HDR.Items[k].indexOf(t) >= 0 && c[k] !== undefined) v = c[k]; });
+      return v;
+    });
+  }
+  clean.forEach(function (c, i) { c.reportId = id; writes[targets[i]] = rowArr(c); });
+  var blank = head.map(function () { return ''; });
+  old.slice(clean.length).forEach(function (r) { writes[r] = blank; });
+  var rows = Object.keys(writes).map(Number).sort(function (a, b) { return a - b; }), i = 0;
+  while (i < rows.length) {
+    var j = i; while (j + 1 < rows.length && rows[j + 1] === rows[j] + 1) j++;
+    var vals = []; for (var k = i; k <= j; k++) vals.push(writes[rows[k]]);
+    sh.getRange(rows[i], 1, vals.length, width).setValues(vals);
+    i = j + 1;
+  }
+}
+
+/** يضبط عدة خلايا في صف بقراءة الرأس مرة واحدة. */
+function setCells_(name, row, obj) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  Object.keys(obj).forEach(function (k) {
+    var c = 0; head.forEach(function (h, j) { if (HDR[name][k].indexOf(trim_(h)) >= 0) c = j + 1; });
+    if (!c) throw new Error('العمود غير موجود: ' + name + '.' + k);
+    sh.getRange(row, c).setValue(obj[k]);
+  });
+}
+
 /** رقم عمود مفتاح داخلي في ورقة (1-based) أو 0 إن لم يوجد. */
 function colOf_(name, key) {
   var sh = SpreadsheetApp.getActive().getSheetByName(name);
@@ -210,7 +291,7 @@ function pinOk_(stored, pin) {
 
 function staffRow_(username) {
   var u = trim_(username);
-  return table_('Staff').filter(function (s) { return trim_(s.username) === u && truthy_(s.active); })[0] || null;
+  return tableC_('Staff', 60).filter(function (s) { return trim_(s.username) === u && truthy_(s.active); })[0] || null;
 }
 
 /** يبني سياق المستخدم من صف Staff. */
@@ -242,8 +323,8 @@ function needsPin_(s) { var r = roleInfo_(s.role).role; return r === 'principal'
 
 /** قائمة الدخول: الاسم والدور والقسم، وهل يلزم رمز، وهل القسم/الدور مهيّأ (فيه طلاب ضمن صلاحيته). */
 function api_users() {
-  var studs = table_('Students').filter(function (x) { return truthy_(x.active); });
-  return table_('Staff').filter(function (s) { return truthy_(s.active) && trim_(s.username); })
+  var studs = tableC_('Students', 300).filter(function (x) { return truthy_(x.active); });
+  return tableC_('Staff', 60).filter(function (s) { return truthy_(s.active) && trim_(s.username); })
     .map(function (s) {
       var ready = false, dept = 'all';
       try {
@@ -268,7 +349,7 @@ function api_login(username, pin) {
   }
   cache.remove(key);
   var ctx = ctxFor_(username);
-  if (ctx.role !== 'principal' && ctx.role !== 'admin' && !table_('Students').some(function (x) { return truthy_(x.active) && canSee_(ctx, x); }))
+  if (ctx.role !== 'principal' && ctx.role !== 'admin' && !tableC_('Students', 300).some(function (x) { return truthy_(x.active) && canSee_(ctx, x); }))
     throw new Error('القسم المطلوب قيد عمليات تهيئة قواعد البيانات.');
   var token = Utilities.getUuid() + Utilities.getUuid().replace(/-/g, '');
   cache.put('tok_' + token, JSON.stringify({ username: ctx.username }), SESSION_SECONDS);
@@ -287,7 +368,7 @@ function canSee_(ctx, s) {
 }
 
 function studentFor_(ctx, studentId) {
-  var s = table_('Students').filter(function (x) { return trim_(x.id) === studentId && truthy_(x.active); })[0];
+  var s = tableC_('Students', 300).filter(function (x) { return trim_(x.id) === studentId && truthy_(x.active); })[0];
   if (!s || !canSee_(ctx, s)) throw new Error('الطالب غير متاح.');
   return s;
 }
@@ -300,12 +381,16 @@ function api_me(token) { var c = ctx_(token); return { name: c.name, role: c.rol
 
 function api_students(token) { return listStudents_(ctx_(token)); }
 
-function listStudents_(ctx) {
-  var reports = {};
-  var P = period_();
-  table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { reports[r.studentId] = r.status; });
-  return table_('Students')
-    .filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); })
+function statusMap_() {
+  var P = period_(), m = {};
+  tableC_('Reports', 90).filter(function (r) { return repOf_(r, P); }).forEach(function (r) { m[r.studentId] = r.status; });
+  return m;
+}
+function visibleStudents_(ctx) { return tableC_('Students', 300).filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); }); }
+
+function listStudents_(ctx, studs, reports) {
+  reports = reports || statusMap_();
+  return (studs || visibleStudents_(ctx))
     .map(function (s) {
       return { id: trim_(s.id), name: trim_(s.name), name_en: trim_(s.name_en), department: trim_(s.department), stage: stageOf_(s),
                grade: trim_(s.grade), section: trim_(s.section), class: (trim_(s.grade) + ' ' + trim_(s.section)).trim(), status: reports[trim_(s.id)] || 'NONE' };
@@ -315,13 +400,11 @@ function listStudents_(ctx) {
 /** إحصاءات المتابعة لكل مرحلة ضمن صلاحية المستخدم. */
 function api_stats(token) { return stats_(ctx_(token)); }
 
-function stats_(ctx) {
+function stats_(ctx, studs, status) {
   var out = {};
   STAGES.forEach(function (st) { out[st] = { total: 0, NONE: 0, DRAFT: 0, SUBMITTED: 0, REVIEWED: 0, APPROVED: 0, PUBLISHED: 0 }; });
-  var status = {};
-  var P = period_();
-  table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { status[r.studentId] = r.status; });
-  table_('Students').filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); }).forEach(function (s) {
+  status = status || statusMap_();
+  (studs || visibleStudents_(ctx)).forEach(function (s) {
     var st = stageOf_(s); if (!out[st]) return;
     var k = status[trim_(s.id)] || 'NONE';
     out[st].total++; out[st][k]++;
@@ -330,10 +413,17 @@ function stats_(ctx) {
   return { stages: out };
 }
 
-function api_library(token) {
-  ctx_(token);
-  return table_('Library').filter(function (l) { return truthy_(l.active); })
+function library_() {
+  return tableC_('Library', 600).filter(function (l) { return truthy_(l.active); })
     .map(function (l) { return { id: l.id, category: trim_(l.category), text: trim_(l.text), stage: l.stage }; });
+}
+function api_library(token) { ctx_(token); return library_(); }
+
+/** كل ما تحتاجه الواجهة بعد الدخول في استدعاء واحد (بدل me + students + library + stats). */
+function api_boot(token) {
+  var ctx = ctx_(token), studs = visibleStudents_(ctx), st = statusMap_();
+  return { user: { name: ctx.name, role: ctx.role, stage: ctx.stages.join('+'), department: ctx.departments.join('+'), period: periodInfo_() },
+           students: listStudents_(ctx, studs, st), library: library_(), stats: stats_(ctx, studs, st) };
 }
 
 function api_audit(token) {
@@ -349,11 +439,16 @@ function api_getReport(token, studentId) { return getReport_(ctx_(token), studen
 
 function getReport_(ctx, studentId) {
   studentFor_(ctx, studentId);
-  var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && repOf_(r, period_()); })[0];
+  var P = period_();
+  var rep = tableC_('Reports', 90).filter(function (r) { return r.studentId === studentId && repOf_(r, P); })[0];
   if (!rep) return { status: 'NONE', items: [] };
-  var items = table_('Items').filter(function (i) { return i.reportId === rep.id; })
-    .sort(function (a, b) { return a.order - b.order; })
-    .map(function (i) { return { category: i.category, text: i.text, source: i.source }; });
+  var items = cget_('itm_' + rep.id);
+  if (!items) {
+    items = table_('Items').filter(function (i) { return i.reportId === rep.id; })
+      .sort(function (a, b) { return a.order - b.order; })
+      .map(function (i) { return { category: i.category, text: i.text, source: i.source }; });
+    cput_('itm_' + rep.id, items, 600);
+  }
   return { id: rep.id, status: rep.status, items: items, pdfUrl: rep.pdfUrl };
 }
 
@@ -370,7 +465,7 @@ function saveReport_(ctx, studentId, items) {
 
     var counts = { strength: 0, improve: 0, recommend: 0 };
     var libTexts = {};
-    table_('Library').forEach(function (l) { libTexts[trim_(l.text)] = true; });
+    tableC_('Library', 600).forEach(function (l) { libTexts[trim_(l.text)] = true; });
     var clean = items.map(function (it, i) {
       if (CATS.indexOf(it.category) < 0) throw new Error('فئة غير صالحة.');
       var t = trim_(it.text);
@@ -389,11 +484,12 @@ function saveReport_(ctx, studentId, items) {
     } else {
       id = rep.id;
       setCell_('Reports', rep._row, 'updatedAt', now);
-      deleteRows_('Items', table_('Items').filter(function (i) { return i.reportId === id; }).map(function (i) { return i._row; }));
     }
-    clean.forEach(function (c) { c.reportId = id; appendObj_('Items', c); });
+    writeItems_(id, clean);
+    cput_('itm_' + id, clean.map(function (c) { return { category: c.category, text: c.text, source: c.source }; }), 600);
+    bust_('Reports');
     audit_(ctx.username, 'SAVE', id, clean.length + ' بنود');
-    return { id: id, status: rep ? rep.status : 'DRAFT' };
+    return { id: id, status: rep ? rep.status : 'DRAFT', stats: stats_(ctx) };
   } finally { lock.releaseLock(); }
 }
 
@@ -410,15 +506,16 @@ function transition_(ctx, studentId, to, reason) {
     if (to === 'DRAFT' && !trim_(reason)) throw new Error('سبب الإعادة مطلوب.');
     if (to === 'SUBMITTED') {
       var got = { strength: 0, improve: 0, recommend: 0 };
-      table_('Items').filter(function (i) { return i.reportId === rep.id; }).forEach(function (i) { got[i.category]++; });
+      (cget_('itm_' + rep.id) || table_('Items').filter(function (i) { return i.reportId === rep.id; })).forEach(function (i) { got[i.category]++; });
       if (!got.strength || !got.improve || !got.recommend) throw new Error('أكمل نقطة قوة وتحسين وتوصية على الأقل.');
     }
-    setCell_('Reports', rep._row, 'status', to);
-    setCell_('Reports', rep._row, 'updatedAt', new Date());
-    if (to === 'REVIEWED') setCell_('Reports', rep._row, 'reviewedBy', ctx.username);
-    if (to === 'APPROVED') setCell_('Reports', rep._row, 'approvedBy', ctx.username);
+    var upd = { status: to, updatedAt: new Date() };
+    if (to === 'REVIEWED') upd.reviewedBy = ctx.username;
+    if (to === 'APPROVED') upd.approvedBy = ctx.username;
+    setCells_('Reports', rep._row, upd);
+    bust_('Reports');
     audit_(ctx.username, 'TRANSITION', rep.id, rep.status + ' -> ' + to + (reason ? ' | ' + reason : ''));
-    return { status: to, pdfUrl: '' };
+    return { status: to, pdfUrl: '', stats: stats_(ctx) };
   } finally { lock.releaseLock(); }
 }
 
@@ -532,6 +629,7 @@ function selfTest() {
   appendObj_('Students', { id: 'TEST-1', department: 'الأهلي', stage: 'ابتدائي', grade: 'الثالث الابتدائي', section: 'أ', name: 'TEST_طالب ابتدائي', active: 'نعم' });
   appendObj_('Students', { id: 'TEST-2', department: 'الأهلي', stage: 'متوسط', grade: 'الأول المتوسط', section: 'أ', name: 'TEST_طالب متوسط', active: 'نعم' });
   appendObj_('Students', { id: 'TEST-3', department: 'الدبلوما الأمريكية', stage: 'ابتدائي', grade: 'Grade 3', section: 'A', name: 'TEST_طالب دبلوما', active: 'نعم' });
+  bustAll_();
   try {
     var c = ctxFor_('TEST_موجه ابتدائي'), d = ctxFor_('TEST_وكيل متوسط'), p = ctxFor_('TEST_مدير'), cd = ctxFor_('TEST_موجه دبلوما');
     var ids = function (ctx) { return listStudents_(ctx).filter(function (s) { return /^TEST-/.test(s.id); }).map(function (s) { return s.id; }).join(); };
@@ -561,6 +659,13 @@ function selfTest() {
     api_logout(lg.token);
     throws(function () { api_me(lg.token); }, 'الخروج يُنهي الجلسة');
     var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'عبارة مخصصة للاختبار' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
+    var sv = saveReport_(c, 'TEST-1', items);
+    ok(!!sv.stats && !!sv.stats.stages.primary, 'الحفظ يعيد الإحصاءات (بلا استدعاء إضافي)');
+    var bt = api_boot(lg.token);
+    ok(bt.user.role === 'counselor' && !!bt.user.period && bt.students.some(function (x) { return x.id === 'TEST-1' && x.status === 'DRAFT'; }) && !!bt.stats.stages.primary, 'api_boot يعيد المستخدم والطلاب والمكتبة والإحصاءات في استدعاء واحد، وحالة الحفظ تظهر رغم الذاكرة المؤقتة');
+    ok(getReport_(c, 'TEST-1').items.length === 3 && getReport_(c, 'TEST-1').items.length === 3, 'قراءة بنود التقرير (من الذاكرة) صحيحة');
+    saveReport_(c, 'TEST-1', items.slice(0, 2));
+    ok(getReport_(c, 'TEST-1').items.length === 2 && table_('Items').filter(function (i) { return i.reportId === sv.id; }).length === 2, 'إعادة الحفظ تُفرغ البنود الزائدة ولا تكرّرها');
     saveReport_(c, 'TEST-1', items);
     throws(function () { saveReport_(c, 'TEST-1', items.concat([1, 2, 3, 4, 5].map(function () { return { category: 'strength', text: 'x' }; }))); }, 'تجاوز حد النقاط مرفوض');
     var rp = table_('Reports').filter(function (r) { return r.studentId === 'TEST-1'; })[0];
@@ -581,6 +686,7 @@ function selfTest() {
   deleteRows_('Audit', table_('Audit').filter(function (a) { return /^TEST_/.test(trim_(a.email)); }).map(function (a) { return a._row; }));
   deleteRows_('Staff', table_('Staff').filter(function (r) { return /^TEST_/.test(trim_(r.username)); }).map(function (r) { return r._row; }));
   deleteRows_('Students', table_('Students').filter(function (r) { return /^TEST-/.test(trim_(r.id)); }).map(function (r) { return r._row; }));
+  bustAll_();
   Logger.log(log.join('\n'));
   return log;
 }
@@ -591,7 +697,7 @@ function selfTest() {
 // الدوال المسموح استدعاؤها عن بعد (قائمة بيضاء). الوسيط الأول للمحمية دائماً token.
 var API_MAP = { api_users: api_users, api_login: api_login, api_logout: api_logout, api_me: api_me, api_students: api_students,
                 api_library: api_library, api_getReport: api_getReport, api_saveReport: api_saveReport, api_transition: api_transition,
-                api_stats: api_stats, api_audit: api_audit };
+                api_stats: api_stats, api_audit: api_audit, api_boot: api_boot };
 
 /**
  * يستقبل POST بنص JSON: {"fn":"api_login","args":["اسم","رمز"]} (Content-Type: text/plain لتجنّب طلب preflight)

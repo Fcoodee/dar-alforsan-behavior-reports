@@ -277,10 +277,11 @@ const Busy=(()=>{let n=0,t=null,since=0,el=null;
 const mkBackend=call0=>{const call=(fn,...a)=>Busy.run(()=>call0(fn,...a)); // الدخول بحساب دور + رمز، وجلسة token (داخل Apps Script أو عن بعد من GitHub Pages)
  let token=null;try{token=sessionStorage.getItem('dfa_tok');}catch(e){}
  const au=(fn,...a)=>call(fn,token,...a);
+ const auq=(fn,...a)=>call0(fn,token,...a); // بلا مربع انتظار (الحفظ المتفائل)
  return{isMock:false,hasToken:()=>!!token,users:()=>call('api_users'),
   async login(u,p){const r=await call('api_login',u,p);token=r.token;try{sessionStorage.setItem('dfa_tok',token);}catch(e){}return r.user;},
   async logout(){try{await au('api_logout');}catch(e){}token=null;try{sessionStorage.removeItem('dfa_tok');}catch(e){}},
-  as:()=>au('api_me'),me:()=>au('api_me'),students:()=>au('api_students'),library:()=>au('api_library'),
+  as:()=>au('api_me'),me:()=>au('api_me'),boot:()=>au('api_boot'),saveReportQ:(id,i)=>auq('api_saveReport',id,i),students:()=>au('api_students'),library:()=>au('api_library'),
   getReport:id=>au('api_getReport',id),saveReport:(id,i)=>au('api_saveReport',id,i),transition:(id,t,r)=>au('api_transition',id,t,r),audit:()=>au('api_audit'),stats:()=>au('api_stats'),reset(){}};};
 const Gas=mkBackend(gasCall);
 const Remote=API_URL?mkBackend(remoteCall):null;
@@ -478,9 +479,12 @@ async function showGasLogin(msg){
   try{await B.login($('#gu').value,needPin()?$('#gp').value:'');await boot();}catch(er){$('#lerr').textContent=er.message;}};
  const f=$('#gu');if(f)f.focus();
 }
-async function loadAll(){S.user=await B.me();Guard.set(S.user.role!=='admin');S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
-async function switchUser(email){await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
+async function loadAll(){
+ if(B.boot){const r=await B.boot();S.user=r.user;S.students=r.students;S.lib=r.library;S.stats=r.stats;Guard.set(S.user.role!=='admin');return;}
+ S.user=await B.me();Guard.set(S.user.role!=='admin');S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
+async function switchUser(email){await saveChain;await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
 async function pick(id){
+ await saveChain;
  S.cur=id;S.msg='';S.reason='';
  try{const r=await B.getReport(id);S.items=r.items||[];S.status=r.status||'NONE';S.pdfUrl=r.pdfUrl||'';}catch(e){S.items=[];S.status='NONE';say(e.message,'err');}
  S.cls=curStudent().class;render();
@@ -488,10 +492,19 @@ async function pick(id){
 const periodTxt=()=>{const p=(S.user&&S.user.period)||{semester:'الفصل الدراسي الأول',label:'الفترة الأولى'};return p.semester+' · '+p.label;};
 const has=(cat,t)=>S.items.some(i=>i.category===cat&&i.text===t);
 const editable=()=>['NONE','DRAFT'].includes(S.status)&&['counselor','deputy','admin'].includes(S.user.role);
-async function persist(){
- try{const r=await B.saveReport(S.cur,S.items);S.status=r.status;const s=curStudent();s.status=r.status;S.stats=await B.stats();say('تم الحفظ كمسودة.','ok');}
- catch(e){say(e.message,'err');await pick(S.cur);return;}
- render();
+let saveChain=Promise.resolve(),pendingSaves=0;
+const sv=(id,items)=>B.saveReportQ?B.saveReportQ(id,items):B.saveReport(id,items);
+async function reloadCur(){try{const r=await B.getReport(S.cur);S.items=r.items||[];S.status=r.status||'NONE';}catch(e){}}
+function persist(){ // حفظ متفائل: الواجهة تتحدّث فوراً، والحفظ يجري بالتسلسل في الخلفية دون حجب النقرات
+ const id=S.cur,items=S.items.map(x=>({...x}));
+ S.status='DRAFT';const cs=curStudent();if(cs)cs.status='DRAFT';
+ pendingSaves++;say('جارٍ الحفظ…','');
+ saveChain=saveChain.then(async()=>{
+  try{const r=await sv(id,items);const st=S.students.find(x=>x.id===id);if(st)st.status=r.status;if(S.cur===id)S.status=r.status;S.stats=r.stats||await B.stats();
+   if(--pendingSaves===0){say('تم الحفظ كمسودة.','ok');render();}}
+  catch(e){pendingSaves=0;say(e.message,'err');if(S.cur===id)await reloadCur();render();}
+ });
+ render();return saveChain;
 }
 async function toggle(cat,t){
  if(!editable())return;
@@ -505,8 +518,9 @@ async function addCustom(cat){
  S.items=S.items.concat([{category:cat,text:t,source:'custom'}]);S.drafts[cat]='';await persist();
 }
 async function go(to){
+ await saveChain;
  const needReason=to==='DRAFT';
- try{const r=await B.transition(S.cur,to,needReason?S.reason:'');S.status=r.status;S.pdfUrl=r.pdfUrl||'';curStudent().status=r.status;S.stats=await B.stats();S.reason='';say('تمت النقلة إلى «'+ST_AR[r.status]+'».','ok');}
+ try{const r=await B.transition(S.cur,to,needReason?S.reason:'');S.status=r.status;S.pdfUrl=r.pdfUrl||'';curStudent().status=r.status;S.stats=r.stats||await B.stats();S.reason='';say('تمت النقلة إلى «'+ST_AR[r.status]+'».','ok');}
  catch(e){say(e.message,'err');}
  render();
 }
