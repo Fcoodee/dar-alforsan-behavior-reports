@@ -484,6 +484,7 @@ async function pick(id){
  try{const r=await B.getReport(id);S.items=r.items||[];S.status=r.status||'NONE';S.pdfUrl=r.pdfUrl||'';}catch(e){S.items=[];S.status='NONE';say(e.message,'err');}
  S.cls=curStudent().class;render();
 }
+const periodTxt=()=>{const p=(S.user&&S.user.period)||{semester:'الفصل الدراسي الأول',label:'الفترة الأولى'};return p.semester+' · '+p.label;};
 const has=(cat,t)=>S.items.some(i=>i.category===cat&&i.text===t);
 const editable=()=>['NONE','DRAFT'].includes(S.status)&&['counselor','deputy','admin'].includes(S.user.role);
 async function persist(){
@@ -550,7 +551,7 @@ function render(){
  const stu=curStudent();
  $('#app').innerHTML=
  "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
- "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">الفصل الدراسي الأول</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
+ "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">"+esc(periodTxt())+"</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
  "<div class=\"ctl\">"+(B.isMock&&u.role==="admin"?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  usersBarHtml()+dashHtml()+maintHtml()+

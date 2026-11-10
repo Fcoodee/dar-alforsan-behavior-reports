@@ -13,6 +13,10 @@
  */
 
 var YEAR = '1448-1449';
+// الفترات: دورتان في كل فصل دراسي. الفترة الحالية تُضبط من ورقة Config (المفتاح «الفترة الحالية»)؛ الافتراضي S1P1.
+var PERIODS = { S1P1: { semester: 'الفصل الدراسي الأول', label: 'الفترة الأولى' }, S1P2: { semester: 'الفصل الدراسي الأول', label: 'الفترة الثانية' },
+                S2P1: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الأولى' }, S2P2: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الثانية' } };
+var DEFAULT_PERIOD = 'S1P1';
 var ROLES = ['counselor', 'deputy', 'principal', 'admin'];
 var STAGES = ['primary', 'middle', 'secondary'];
 var CATS = ['strength', 'improve', 'recommend'];
@@ -30,7 +34,8 @@ var HDR = {
   Staff:    { username: ['اسم المستخدم', 'username'], role: ['الدور', 'role'], department: ['القسم', 'department'], stage: ['المرحلة', 'stage'],
               pin: ['رمز الدخول', 'pin'], active: ['فعّال', 'active'], name: ['الاسم', 'name'], email: ['البريد (اختياري)', 'البريد (دومين المدرسة)', 'email'] },
   Library:  { id: ['id'], category: ['category'], text: ['text'], stage: ['stage'], active: ['active'] },
-  Reports:  { id: ['id'], studentId: ['studentId'], year: ['year'], status: ['status'], createdBy: ['createdBy'], createdAt: ['createdAt'],
+  Config:   { key: ['المفتاح', 'key'], value: ['القيمة', 'value'], note: ['ملاحظة', 'note'] },
+  Reports:  { id: ['id'], studentId: ['studentId'], year: ['year'], period: ['period'], status: ['status'], createdBy: ['createdBy'], createdAt: ['createdAt'],
               updatedAt: ['updatedAt'], reviewedBy: ['reviewedBy'], approvedBy: ['approvedBy'], pdfUrl: ['pdfUrl'] },
   Items:    { reportId: ['reportId'], category: ['category'], text: ['text'], source: ['source'], order: ['order'] },
   Audit:    { ts: ['ts'], email: ['email'], action: ['action'], target: ['target'], detail: ['detail'] }
@@ -39,7 +44,8 @@ var HDR_ORDER = {
   Students: ['id', 'department', 'stage', 'grade', 'section', 'name', 'name_en', 'active'],
   Staff: ['username', 'role', 'department', 'stage', 'pin', 'active', 'name', 'email'],
   Library: ['id', 'category', 'text', 'stage', 'active'],
-  Reports: ['id', 'studentId', 'year', 'status', 'createdBy', 'createdAt', 'updatedAt', 'reviewedBy', 'approvedBy', 'pdfUrl'],
+  Config: ['key', 'value', 'note'],
+  Reports: ['id', 'studentId', 'year', 'period', 'status', 'createdBy', 'createdAt', 'updatedAt', 'reviewedBy', 'approvedBy', 'pdfUrl'],
   Items: ['reportId', 'category', 'text', 'source', 'order'],
   Audit: ['ts', 'email', 'action', 'target', 'detail']
 };
@@ -69,6 +75,20 @@ var EDITABLE = { DRAFT: true };
 /* ───────────── أدوات الأعمدة والقيم ───────────── */
 
 function trim_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
+function period_() {
+  var cache = CacheService.getScriptCache(), c = cache.get('cfg_period');
+  if (c && PERIODS[c]) return c;
+  var p = DEFAULT_PERIOD;
+  try {
+    var row = table_('Config').filter(function (r) { return ['الفترة الحالية', 'period'].indexOf(trim_(r.key)) >= 0; })[0];
+    if (row && PERIODS[trim_(row.value)]) p = trim_(row.value);
+  } catch (e) {}
+  cache.put('cfg_period', p, 60);
+  return p;
+}
+function periodInfo_() { var c = period_(); return { code: c, semester: PERIODS[c].semester, label: PERIODS[c].label }; }
+function repOf_(r, P) { return r.year === YEAR && (trim_(r.period) || DEFAULT_PERIOD) === P; }
+
 function norm_(map, v) { var t = trim_(v); return map[t] || t.toLowerCase(); }
 function list_(map, v) { return trim_(v).split(/[+،,]/).map(trim_).filter(Boolean).map(function (x) { return norm_(map, x); }); }
 function truthy_(v) { return v === true || ['نعم', 'true', 'yes', 'y', '1'].indexOf(trim_(v).toLowerCase()) >= 0; }
@@ -159,6 +179,8 @@ function setup() {
       if (name === 'Staff') msgs.push('كُتبت رؤوس Staff الجديدة: ' + heads.join(' | '));
     }
   });
+  var cf = ss.getSheetByName('Config');
+  if (cf && cf.getLastRow() <= 1) { cf.appendRow(['الفترة الحالية', DEFAULT_PERIOD, 'S1P1 أولى/أول · S1P2 ثانية/أول · S2P1 أولى/ثاني · S2P2 ثانية/ثاني']); }
   msgs.push('تم التأكد من الأوراق. أضف مستخدمي الأدوار في Staff (اسم المستخدم، الدور، القسم، المرحلة، رمز الدخول، فعّال).');
   Logger.log(msgs.join('\n'));
   return msgs;
@@ -274,18 +296,19 @@ function stageOf_(s) { return norm_(STAGE_MAP, s.stage); }
 
 /* ───────────── واجهة برمجية (تُستدعى من الصفحة؛ الوسيط الأول دائماً token) ───────────── */
 
-function api_me(token) { var c = ctx_(token); return { name: c.name, role: c.role, stage: c.stages.join('+'), department: c.departments.join('+') }; }
+function api_me(token) { var c = ctx_(token); return { name: c.name, role: c.role, stage: c.stages.join('+'), department: c.departments.join('+'), period: periodInfo_() }; }
 
 function api_students(token) { return listStudents_(ctx_(token)); }
 
 function listStudents_(ctx) {
   var reports = {};
-  table_('Reports').filter(function (r) { return r.year === YEAR; }).forEach(function (r) { reports[r.studentId] = r.status; });
+  var P = period_();
+  table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { reports[r.studentId] = r.status; });
   return table_('Students')
     .filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); })
     .map(function (s) {
       return { id: trim_(s.id), name: trim_(s.name), name_en: trim_(s.name_en), department: trim_(s.department), stage: stageOf_(s),
-               grade: trim_(s.grade), section: trim_(s.section), class: trim_(s.grade) + ' ' + trim_(s.section), status: reports[trim_(s.id)] || 'NONE' };
+               grade: trim_(s.grade), section: trim_(s.section), class: (trim_(s.grade) + ' ' + trim_(s.section)).trim(), status: reports[trim_(s.id)] || 'NONE' };
     });
 }
 
@@ -296,7 +319,8 @@ function stats_(ctx) {
   var out = {};
   STAGES.forEach(function (st) { out[st] = { total: 0, NONE: 0, DRAFT: 0, SUBMITTED: 0, REVIEWED: 0, APPROVED: 0, PUBLISHED: 0 }; });
   var status = {};
-  table_('Reports').filter(function (r) { return r.year === YEAR; }).forEach(function (r) { status[r.studentId] = r.status; });
+  var P = period_();
+  table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { status[r.studentId] = r.status; });
   table_('Students').filter(function (s) { return truthy_(s.active) && canSee_(ctx, s); }).forEach(function (s) {
     var st = stageOf_(s); if (!out[st]) return;
     var k = status[trim_(s.id)] || 'NONE';
@@ -325,7 +349,7 @@ function api_getReport(token, studentId) { return getReport_(ctx_(token), studen
 
 function getReport_(ctx, studentId) {
   studentFor_(ctx, studentId);
-  var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && r.year === YEAR; })[0];
+  var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && repOf_(r, period_()); })[0];
   if (!rep) return { status: 'NONE', items: [] };
   var items = table_('Items').filter(function (i) { return i.reportId === rep.id; })
     .sort(function (a, b) { return a.order - b.order; })
@@ -340,7 +364,7 @@ function saveReport_(ctx, studentId, items) {
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     studentFor_(ctx, studentId);
-    var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && r.year === YEAR; })[0];
+    var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && repOf_(r, period_()); })[0];
     if (rep && !EDITABLE[rep.status]) throw new Error('التقرير مقفل بحالته الحالية.');
     if (['counselor', 'deputy', 'admin'].indexOf(ctx.role) < 0) throw new Error('لا صلاحية للتعديل.');
 
@@ -361,7 +385,7 @@ function saveReport_(ctx, studentId, items) {
     var now = new Date(), id;
     if (!rep) {
       id = 'R-' + Utilities.getUuid().slice(0, 8);
-      appendObj_('Reports', { id: id, studentId: studentId, year: YEAR, status: 'DRAFT', createdBy: ctx.username, createdAt: now, updatedAt: now });
+      appendObj_('Reports', { id: id, studentId: studentId, year: YEAR, period: period_(), status: 'DRAFT', createdBy: ctx.username, createdAt: now, updatedAt: now });
     } else {
       id = rep.id;
       setCell_('Reports', rep._row, 'updatedAt', now);
@@ -379,7 +403,7 @@ function transition_(ctx, studentId, to, reason) {
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     studentFor_(ctx, studentId);
-    var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && r.year === YEAR; })[0];
+    var rep = table_('Reports').filter(function (r) { return r.studentId === studentId && repOf_(r, period_()); })[0];
     if (!rep) throw new Error('لا يوجد تقرير.');
     var allowed = (TRANSITIONS[rep.status] || {})[to];
     if (!allowed || allowed.indexOf(ctx.role) < 0) throw new Error('هذه النقلة غير مسموحة لدورك.');
@@ -470,7 +494,7 @@ function checkSetup() {
     var id = trim_(s.id), st = norm_(STAGE_MAP, s.stage);
     ok(!!id && !ids[id], 'Students صف ' + s._row + ': رقم داخلي موجود وغير مكرر'); ids[id] = 1;
     ok(STAGES.indexOf(st) >= 0, 'Students صف ' + s._row + ': المرحلة معروفة («' + trim_(s.stage) + '»)');
-    ok(!!trim_(s.name) && !!trim_(s.grade) && !!trim_(s.section), 'Students صف ' + s._row + ': الاسم والصف والشعبة معبّأة');
+    ok(!!trim_(s.name) && !!trim_(s.grade), 'Students صف ' + s._row + ': الاسم والصف معبّأان');
     if (truthy_(s.active)) perStage[st] = (perStage[st] || 0) + 1;
   });
   log.push('عدد الطلاب الفعّالين: ' + Object.keys(perStage).map(function (k) { return k + '=' + perStage[k]; }).join('، '));
@@ -530,6 +554,7 @@ function selfTest() {
     ok(!!lg.token && lg.user.role === 'counselor', 'الموجه يدخل بلا رمز ويحصل على جلسة');
     ok(api_users().filter(function (u) { return u.username === 'TEST_مدير'; })[0].needsPin === true && api_users().filter(function (u) { return u.username === 'TEST_موجه ابتدائي'; })[0].needsPin === false, 'الرمز مطلوب للمدير فقط');
     ok(api_me(lg.token).stage === 'primary', 'الجلسة تعيد مرحلة المستخدم');
+    ok(api_me(lg.token).period.code === period_() && !!PERIODS[period_()], 'الجلسة تعيد الفترة الحالية (' + period_() + ')');
     throws(function () { api_login('TEST_مدير', 'خطأ'); }, 'رمز المدير الخاطئ مرفوض');
     throws(function () { api_login('TEST_مدير', ''); }, 'دخول المدير بلا رمز مرفوض');
     throws(function () { api_students('رمز-جلسة-وهمي'); }, 'جلسة غير صالحة مرفوضة');
@@ -538,6 +563,8 @@ function selfTest() {
     var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'عبارة مخصصة للاختبار' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
     saveReport_(c, 'TEST-1', items);
     throws(function () { saveReport_(c, 'TEST-1', items.concat([1, 2, 3, 4, 5].map(function () { return { category: 'strength', text: 'x' }; }))); }, 'تجاوز حد النقاط مرفوض');
+    var rp = table_('Reports').filter(function (r) { return r.studentId === 'TEST-1'; })[0];
+    ok(!!rp && trim_(rp.period) === period_(), 'التقرير يُخزَّن بفترته (' + (rp ? trim_(rp.period) : '-') + ')');
     transition_(c, 'TEST-1', 'SUBMITTED');
     var stC = stats_(c), stD = stats_(d), stP = stats_(p);
     ok(Object.keys(stC.stages).join() === 'primary' && Object.keys(stD.stages).join() === 'middle', 'الإحصاءات مقيّدة بمرحلة المستخدم');
