@@ -182,6 +182,11 @@ body{padding-bottom:52px}
 .sheet .td+.td{border-right:1px solid #9fb0bd}
 .sheet .tr1{padding:5px 12px;min-height:32px;font-size:12.5px;line-height:1.5;display:flex;align-items:center;border-top:1px solid #9fb0bd}
 .sheet .ft{text-align:center;font-size:14px;font-weight:800}
+.sheet .dlogo{position:absolute;left:50%;top:60px;transform:translateX(-50%);max-height:80px;max-width:120px;object-fit:contain}
+.sheet.en{font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;text-align:left}
+.sheet.en h2{font-size:20px}
+.sheet.en p{font-size:12px;line-height:1.6}
+.sheet.en .td+.td{border-right:0;border-left:1px solid #9fb0bd}
 #printArea{display:none}
 @media print{
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -374,7 +379,7 @@ const Auth=(()=>{
  return{load,login,loginAs,session,logout};
 })();
 const todayStr=()=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Riyadh',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date()).replace(/\//g,'-');
-function noticeHtml(){return '<div class="notice" role="status" aria-live="polite"><div class="nt-top"><span class="nt-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><div><div class="nt-h">اكتملت التهيئة لجميع الأقسام</div><div class="nt-s">جميع الأقسام والمراحل تعمل</div></div></div><div class="ind done" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="اكتملت التهيئة"><i></i></div><div class="nt-d"><span class="ok">القسم الأهلي — اكتملت التهيئة</span><span class="ok">قسم الدبلوما — اكتملت التهيئة</span><span class="ok">قسم التربية الخاصة — اكتملت التهيئة</span></div><div class="nt-log"><div class="nt-lh">آخر التحديثات</div><div class="nt-li"><b dir="ltr">'+todayStr()+'</b><span>اكتملت التهيئة لجميع الأقسام</span></div><div class="nt-li"><b dir="ltr">10-11-2026</b><span>جاري تهيئة قاعدة بيانات الأقسام ( الدبلوما - التربية الخاصة )</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )</span></div><div class="nt-li"><b dir="ltr">08-11-2026</b><span>بدأ العمل على تهيئة قواعد بيانات الأقسام: الأهلي · الدبلوما · التربية الخاصة</span></div></div></div>';}
+function noticeHtml(){return '<div class="notice" role="status" aria-live="polite"><div class="nt-top"><span class="nt-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><div><div class="nt-h">اكتملت التهيئة لجميع الأقسام</div><div class="nt-s">جميع الأقسام والمراحل تعمل</div></div></div><div class="ind done" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="اكتملت التهيئة"><i></i></div><div class="nt-d"><span class="ok">القسم الأهلي — اكتملت التهيئة</span><span class="ok">قسم الدبلوما — اكتملت التهيئة</span><span class="ok">قسم التربية الخاصة — اكتملت التهيئة</span></div><div class="nt-log"><div class="nt-lh">آخر التحديثات</div><div class="nt-li"><b dir="ltr">'+todayStr()+'</b><span>تم إطلاق نموذج تجريبي تحت الاختبار والتجربة</span></div><div class="nt-li"><b dir="ltr">'+todayStr()+'</b><span>اكتملت التهيئة لجميع الأقسام</span></div><div class="nt-li"><b dir="ltr">10-11-2026</b><span>جاري تهيئة قاعدة بيانات الأقسام ( الدبلوما - التربية الخاصة )</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )</span></div><div class="nt-li"><b dir="ltr">08-11-2026</b><span>بدأ العمل على تهيئة قواعد بيانات الأقسام: الأهلي · الدبلوما · التربية الخاصة</span></div></div></div>';}
 function showLogin(msg){
  const NOTICE=noticeHtml();
  const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
@@ -526,27 +531,41 @@ async function go(to){
 }
 
 /* التقرير */
-function sheetHtml(name,items,cls){
+const isEnDept=d=>/diploma|دبلوما/i.test(d||'');
+const deptLogo=d=>/diploma|دبلوما/i.test(d||'')?'assets/logo_diploma.png':/special|خاصة/i.test(d||'')?'assets/logo_special.png':'';
+const T_AR={t:y=>'الأداء السلوكي والأكاديمي للعام الدراسي '+y+'هـ',g1:'شريكنا ولي أمر الطالب/ ',g2:'السلام عليكم ورحمة الله وبركاته،،،',
+ p1:'في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.',
+ s:'النقاط الإيجابية ونقاط القوة',i:'نقاط تحتاج إلى دعم وتحسين',r:'التوصيات',
+ p2:'نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.',
+ ft:'حفظكم الله ورعاكم، وكل عام وأنتم بخير'};
+const T_EN={t:y=>'Behavioral and Academic Performance Report · Academic Year '+y+' AH',g1:'Dear Parent/Guardian of the student: ',g2:'Assalamu Alaikum wa Rahmatullahi wa Barakatuh,',
+ p1:'At the end of this academic journey, we would like to extend our sincere thanks for your continued cooperation in supporting our student\'s progress. Having accompanied him throughout the year and observed his academic and behavioral performance in a variety of learning and educational situations, we were delighted by many of the positive aspects and wonderful strengths that distinguish him. At the same time, we have noted a few areas in which we look forward to working with you to give him further care and guidance. In doing so, we always take into account the nature of his age group and its developmental characteristics, with the aim of strengthening his excellence and supporting every opportunity that contributes to his continued growth and development.',
+ s:'Positive Aspects & Strengths',i:'Areas Needing Support & Improvement',r:'Recommendations',
+ p2:'We affirm that continued cooperation between school and family is a cornerstone in building the student\'s character and one of the most important factors in his behavioral and academic success and development. We hope the summer break will be used to reinforce his positive qualities, develop his skills and focus on the behaviors that need follow-up and guidance. We ask Allah to grant him continued success and excellence.',
+ ft:'May Allah protect you and keep you well. With our best wishes.'};
+function sheetHtml(name,items,cls,dept){
+ const en=isEnDept(dept),T=en?T_EN:T_AR,lg=deptLogo(dept),sep=en?'border-right':'border-left';
  const g=c=>items.filter(i=>i.category===c).map(i=>i.text);
  const a=g('strength'),b=g('improve'),r=g('recommend'),n=Math.max(a.length,b.length,1);
  let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
- return '<div class="sheet" dir="rtl"><img class="bg" src="assets/bg.png" alt=""><div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
- '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'هـ</h2>'+
- '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+(cls?' <span class="gcl">( '+L(cls)+' )</span>':'')+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
- '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
- '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
- '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">التوصيات</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
- '<p>نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.</p>'+
- '<div class="ft">حفظكم الله ورعاكم، وكل عام وأنتم بخير</div></div></div>';
+ return '<div class="sheet'+(en?' en':'')+'" dir="'+(en?'ltr':'rtl')+'"><img class="bg" src="assets/bg.png" alt="">'+(lg?'<img class="dlogo" src="'+lg+'" alt="">':'')+'<div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
+ '<h2>'+esc(T.t(DEMO.year))+'</h2>'+
+ '<div><div class="g1">'+esc(T.g1)+esc(name)+(cls?' <span class="gcl">( '+L(cls)+' )</span>':'')+'</div><div class="g2">'+esc(T.g2)+'</div></div>'+
+ '<p>'+esc(T.p1)+'</p>'+
+ '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;'+sep+':1px solid #9fb0bd">'+esc(T.s)+'</div><div class="th" style="background:#fbecc8;color:#5c4306">'+esc(T.i)+'</div></div>'+rows+'</div>'+
+ '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">'+esc(T.r)+'</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
+ '<p>'+esc(T.p2)+'</p>'+
+ '<div class="ft">'+esc(T.ft)+'</div></div></div>';
 }
 
 /* الرسم */
 function optsHtml(cat){
- const lib=S.lib.filter(l=>l.category===cat).map(l=>l.text);
+ const cs=curStudent(),want=isEnDept(cs&&cs.department)?'en':'ar';
+ const lib=S.lib.filter(l=>l.category===cat&&(l.lang||'ar')===want).map(l=>l.text);
  const extra=S.items.filter(i=>i.category===cat&&!lib.includes(i.text)).map(i=>i.text);
  const cnt=S.items.filter(i=>i.category===cat).length,ed=editable();
  return extra.concat(lib).map(t=>{const ch=has(cat,t),dis=!ed||(!ch&&cnt>=MAX[cat]);
-  return '<label class="o"'+(dis&&!ch?' style="opacity:.5"':'')+'><input type="checkbox" data-cat="'+cat+'" data-t="'+esc(t)+'"'+(ch?' checked':'')+(dis?' disabled':'')+'><span>'+esc(t)+'</span></label>';}).join('');
+  return '<label class="o"'+(dis&&!ch?' style="opacity:.5"':'')+'><input type="checkbox" data-cat="'+cat+'" data-t="'+esc(t)+'"'+(ch?' checked':'')+(dis?' disabled':'')+'><span dir="auto">'+esc(t)+'</span></label>';}).join('');
 }
 function actionsHtml(){
  const out=[],u=S.user.role,st=S.status;
@@ -587,7 +606,7 @@ function render(){
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap" id="pw"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');
- if(host&&stu){host.outerHTML=sheetHtml(stu.name,S.items,stu.class).replace('class="sheet"','class="sheet"');}
+ if(host&&stu){host.outerHTML=sheetHtml(stu.name,S.items,stu.class,stu.department).replace('class="sheet"','class="sheet"');}
  else if(host){host.remove();}
  fit();
  bind();
@@ -607,7 +626,7 @@ function bind(){
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
  const pr=$('#print');if(pr)pr.onclick=doPrint;
- const zm=$('#zoom');if(zm)zm.onclick=()=>{const st=curStudent();if(!st)return;$('#zoomBody').innerHTML=sheetHtml(st.name,S.items,st.class);openDlg($('#zoomDlg'));};
+ const zm=$('#zoom');if(zm)zm.onclick=()=>{const st=curStudent();if(!st)return;$('#zoomBody').innerHTML=sheetHtml(st.name,S.items,st.class,st.department);openDlg($('#zoomDlg'));};
  const au=$('#audit');if(au)au.onclick=async()=>{const rows=await B.audit();$('#auditBody').innerHTML='<h3>سجل التدقيق (آخر 60)</h3><table class="au"><tr><th>الوقت</th><th>الحساب</th><th>الإجراء</th><th>الهدف</th><th>تفصيل</th></tr>'+rows.map(x=>'<tr><td>'+esc(x.ts.slice(0,19).replace('T',' '))+'</td><td>'+esc(x.email)+'</td><td>'+x.action+'</td><td>'+esc(x.target)+'</td><td>'+esc(x.detail)+'</td></tr>').join('')+'</table>';openDlg($('#auditDlg'));};
 }
 async function doPrint(){
@@ -615,8 +634,8 @@ async function doPrint(){
  if(S.printScope==='class'){
   const ids=S.students.filter(s=>s.class===S.cls&&['APPROVED','PUBLISHED'].includes(s.status));
   if(!ids.length){say('لا تقارير معتمدة أو منشورة في هذا الفصل.','err');return;}
-  for(const s of ids){const r=await B.getReport(s.id);html+=sheetHtml(s.name,r.items||[],s.class);}
- }else{const s=curStudent();if(!s)return;html=sheetHtml(s.name,S.items,s.class);}
+  for(const s of ids){const r=await B.getReport(s.id);html+=sheetHtml(s.name,r.items||[],s.class,s.department);}
+ }else{const s=curStudent();if(!s)return;html=sheetHtml(s.name,S.items,s.class,s.department);}
  pa.innerHTML=html;
  setTimeout(()=>{try{window.print();}catch(e){say('الطباعة غير متاحة هنا.','err');}},150);
 }

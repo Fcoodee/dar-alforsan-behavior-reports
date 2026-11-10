@@ -33,7 +33,7 @@ var HDR = {
               section: ['الشعبة', 'section'], name: ['الاسم بالعربية', 'name'], name_en: ['الاسم بالإنجليزية', 'name_en'], active: ['فعّال', 'active'] },
   Staff:    { username: ['اسم المستخدم', 'username'], role: ['الدور', 'role'], department: ['القسم', 'department'], stage: ['المرحلة', 'stage'],
               pin: ['رمز الدخول', 'pin'], active: ['فعّال', 'active'], name: ['الاسم', 'name'], email: ['البريد (اختياري)', 'البريد (دومين المدرسة)', 'email'] },
-  Library:  { id: ['id'], category: ['category'], text: ['text'], stage: ['stage'], active: ['active'] },
+  Library:  { id: ['id'], category: ['category'], text: ['text'], stage: ['stage'], active: ['active'], lang: ['lang', 'اللغة'] },
   Config:   { key: ['المفتاح', 'key'], value: ['القيمة', 'value'], note: ['ملاحظة', 'note'] },
   Reports:  { id: ['id'], studentId: ['studentId'], year: ['year'], period: ['period'], status: ['status'], createdBy: ['createdBy'], createdAt: ['createdAt'],
               updatedAt: ['updatedAt'], reviewedBy: ['reviewedBy'], approvedBy: ['approvedBy'], pdfUrl: ['pdfUrl'] },
@@ -43,7 +43,7 @@ var HDR = {
 var HDR_ORDER = {
   Students: ['id', 'department', 'stage', 'grade', 'section', 'name', 'name_en', 'active'],
   Staff: ['username', 'role', 'department', 'stage', 'pin', 'active', 'name', 'email'],
-  Library: ['id', 'category', 'text', 'stage', 'active'],
+  Library: ['id', 'category', 'text', 'stage', 'active', 'lang'],
   Config: ['key', 'value', 'note'],
   Reports: ['id', 'studentId', 'year', 'period', 'status', 'createdBy', 'createdAt', 'updatedAt', 'reviewedBy', 'approvedBy', 'pdfUrl'],
   Items: ['reportId', 'category', 'text', 'source', 'order'],
@@ -413,17 +413,19 @@ function stats_(ctx, studs, status) {
   return { stages: out };
 }
 
-function library_() {
-  return tableC_('Library', 600).filter(function (l) { return truthy_(l.active); })
-    .map(function (l) { return { id: l.id, category: trim_(l.category), text: trim_(l.text), stage: l.stage }; });
+/** العبارات الإنجليزية (lang = en) تُعاد لمن يرى الدبلوما فقط (موجه/وكيل الدبلوما والمدير والمهندس). الفارغ = عربي. */
+function library_(ctx) {
+  var en = !ctx || ctx.role === 'principal' || ctx.role === 'admin' || ctx.departments.indexOf('diploma') >= 0 || ctx.departments.indexOf('all') >= 0;
+  return tableC_('Library', 600).filter(function (l) { return truthy_(l.active) && (en || (trim_(l.lang) || 'ar') !== 'en'); })
+    .map(function (l) { return { id: l.id, category: trim_(l.category), text: trim_(l.text), stage: l.stage, lang: trim_(l.lang) || 'ar' }; });
 }
-function api_library(token) { ctx_(token); return library_(); }
+function api_library(token) { return library_(ctx_(token)); }
 
 /** كل ما تحتاجه الواجهة بعد الدخول في استدعاء واحد (بدل me + students + library + stats). */
 function api_boot(token) {
   var ctx = ctx_(token), studs = visibleStudents_(ctx), st = statusMap_();
   return { user: { name: ctx.name, role: ctx.role, stage: ctx.stages.join('+'), department: ctx.departments.join('+'), period: periodInfo_() },
-           students: listStudents_(ctx, studs, st), library: library_(), stats: stats_(ctx, studs, st) };
+           students: listStudents_(ctx, studs, st), library: library_(ctx), stats: stats_(ctx, studs, st) };
 }
 
 function api_audit(token) {
