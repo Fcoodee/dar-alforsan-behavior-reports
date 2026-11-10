@@ -510,13 +510,13 @@ async function go(to){
 }
 
 /* التقرير */
-function sheetHtml(name,items){
+function sheetHtml(name,items,cls){
  const g=c=>items.filter(i=>i.category===c).map(i=>i.text);
  const a=g('strength'),b=g('improve'),r=g('recommend'),n=Math.max(a.length,b.length,1);
  let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
  return '<div class="sheet" dir="rtl"><img class="bg" src="assets/bg.png" alt=""><div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
  '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'هـ</h2>'+
- '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
+ '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+(cls?' <span class="gcl">( '+L(cls)+' )</span>':'')+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
  '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
  '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
  '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">التوصيات</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+
@@ -571,7 +571,7 @@ function render(){
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap" id="pw"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');
- if(host&&stu){host.outerHTML=sheetHtml(stu.name,S.items).replace('class="sheet"','class="sheet"');}
+ if(host&&stu){host.outerHTML=sheetHtml(stu.name,S.items,stu.class).replace('class="sheet"','class="sheet"');}
  else if(host){host.remove();}
  fit();
  bind();
@@ -591,7 +591,7 @@ function bind(){
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
  const pr=$('#print');if(pr)pr.onclick=doPrint;
- const zm=$('#zoom');if(zm)zm.onclick=()=>{const st=curStudent();if(!st)return;$('#zoomBody').innerHTML=sheetHtml(st.name,S.items);openDlg($('#zoomDlg'));};
+ const zm=$('#zoom');if(zm)zm.onclick=()=>{const st=curStudent();if(!st)return;$('#zoomBody').innerHTML=sheetHtml(st.name,S.items,st.class);openDlg($('#zoomDlg'));};
  const au=$('#audit');if(au)au.onclick=async()=>{const rows=await B.audit();$('#auditBody').innerHTML='<h3>سجل التدقيق (آخر 60)</h3><table class="au"><tr><th>الوقت</th><th>الحساب</th><th>الإجراء</th><th>الهدف</th><th>تفصيل</th></tr>'+rows.map(x=>'<tr><td>'+esc(x.ts.slice(0,19).replace('T',' '))+'</td><td>'+esc(x.email)+'</td><td>'+x.action+'</td><td>'+esc(x.target)+'</td><td>'+esc(x.detail)+'</td></tr>').join('')+'</table>';openDlg($('#auditDlg'));};
 }
 async function doPrint(){
@@ -599,8 +599,8 @@ async function doPrint(){
  if(S.printScope==='class'){
   const ids=S.students.filter(s=>s.class===S.cls&&['APPROVED','PUBLISHED'].includes(s.status));
   if(!ids.length){say('لا تقارير معتمدة أو منشورة في هذا الفصل.','err');return;}
-  for(const s of ids){const r=await B.getReport(s.id);html+=sheetHtml(s.name,r.items||[]);}
- }else{const s=curStudent();if(!s)return;html=sheetHtml(s.name,S.items);}
+  for(const s of ids){const r=await B.getReport(s.id);html+=sheetHtml(s.name,r.items||[],s.class);}
+ }else{const s=curStudent();if(!s)return;html=sheetHtml(s.name,S.items,s.class);}
  pa.innerHTML=html;
  setTimeout(()=>{try{window.print();}catch(e){say('الطباعة غير متاحة هنا.','err');}},150);
 }
