@@ -36,7 +36,9 @@ h1{margin:0;font-size:21px;font-weight:800}
 .chip b{font-size:13.5px;line-height:1.35;text-align:center}.chip small{font-size:12px}
 .chip.sel{background:var(--pri);color:#fff;border-color:var(--pri)}
 .list{max-height:420px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-.st{min-height:48px;text-align:right;border-radius:8px;border:1px solid #c3cfd8;background:#fff;padding:6px 12px;display:flex;flex-direction:column}
+.st{min-height:48px;text-align:right;border-radius:8px;border:1px solid #c3cfd8;background:#fff;padding:6px 12px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 8px}
+.st .gc{background:#eaf3f9;color:#14425f;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.st small{flex-basis:100%}
 .st.sel{background:#d6e6f4;border-color:var(--pri)}
 .st small{color:#3d4e5c;font-size:12.5px}
 fieldset{margin:0;border-radius:8px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
@@ -513,7 +515,7 @@ function sheetHtml(name,items){
  const a=g('strength'),b=g('improve'),r=g('recommend'),n=Math.max(a.length,b.length,1);
  let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
  return '<div class="sheet" dir="rtl"><img class="bg" src="assets/bg.png" alt=""><div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
- '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'ه</h2>'+
+ '<h2>الأداء السلوكي والأكاديمي للعام الدراسي '+esc(DEMO.year)+'هـ</h2>'+
  '<div><div class="g1">شريكنا ولي أمر الطالب/ '+esc(name)+'</div><div class="g2">السلام عليكم ورحمة الله وبركاته،،،</div></div>'+
  '<p>في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.</p>'+
  '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;border-left:1px solid #9fb0bd">النقاط الإيجابية ونقاط القوة</div><div class="th" style="background:#fbecc8;color:#5c4306">نقاط تحتاج إلى دعم وتحسين</div></div>'+rows+'</div>'+
@@ -555,7 +557,7 @@ function render(){
  '<div class="cols">'+
  '<section class="card c1"><div style="font-weight:700">الفصل</div><div class="chips">'+classes().map(c=>{const n=vis.filter(s=>s.class===c);const d=n.filter(s=>['APPROVED','PUBLISHED'].includes(s.status)).length;return '<button class="chip'+(c===S.cls&&!q?' sel':'')+'" data-cls="'+c+'"><b>'+L(c)+'</b><small>'+d+'/'+n.length+'</small></button>';}).join('')+'</div>'+
  '<label style="font-weight:700;display:flex;flex-direction:column;gap:4px">بحث عن طالب<input id="q" type="search" value="'+esc(S.q)+'" placeholder="اكتب جزءاً من الاسم" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400"></label>'+
- '<div class="row"><button class="btn'+(S.filter==='all'?' sel':'')+'" data-flt="all">كل طلاب الفصل</button><button class="btn'+(S.filter==='todo'?' sel':'')+'" data-flt="todo">بانتظار إجرائي ('+todo.length+')</button></div><div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><small>'+L(s.class)+' · '+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub" style="line-height:1.8">'+(vis.length?'لا نتائج.':'لا يوجد طلاب ضمن صلاحيتك حالياً. إن كان هذا غير متوقع فراجع القسم والمرحلة وحالة «فعّال» في ورقتي Staff وStudents (يمكن لمدير النظام تشغيل diagnose()).')+'</div>')+'</div></section>'+
+ '<div class="row"><button class="btn'+(S.filter==='all'?' sel':'')+'" data-flt="all">كل طلاب الفصل</button><button class="btn'+(S.filter==='todo'?' sel':'')+'" data-flt="todo">بانتظار إجرائي ('+todo.length+')</button></div><div class="list">'+list.map(s=>'<button class="st'+(s.id===S.cur?' sel':'')+'" data-stu="'+s.id+'"><b>'+esc(s.name)+'</b><span class="gc">'+L(s.class)+'</span><small>'+ST_AR[s.status]+'</small></button>').join('')+(list.length?'':'<div class="sub" style="line-height:1.8">'+(vis.length?'لا نتائج.':'لا يوجد طلاب ضمن صلاحيتك حالياً. إن كان هذا غير متوقع فراجع القسم والمرحلة وحالة «فعّال» في ورقتي Staff وStudents (يمكن لمدير النظام تشغيل diagnose()).')+'</div>')+'</div></section>'+
  '<section class="card c2">'+(stu?
   '<div class="row" style="justify-content:space-between"><div><div class="sub">'+L(stu.class)+' · '+STAGE_AR[stu.stage]+'</div><h2 style="margin:0;font-size:18px">'+esc(stu.name)+'</h2></div><span class="badge b-'+(S.status==='NONE'?'DRAFT':S.status)+'">'+ST_AR[S.status]+'</span></div>'+
   (editable()?'':'<div class="sub">'+(['counselor','deputy','admin'].includes(u.role)?'التقرير مقفل بحالته الحالية.':'دورك لا يحرّر المحتوى؛ يمكنك الاعتماد أو الإعادة بحسب الحالة.')+'</div>')+
