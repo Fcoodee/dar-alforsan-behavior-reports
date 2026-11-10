@@ -67,6 +67,8 @@ header.hero .emb{position:absolute;left:-40px;bottom:-70px;width:520px;opacity:.
 header.hero>*{position:relative}header.hero>.emb{position:absolute}
 .hero .logo{background:#fff;border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:center}
 .hero .logo img{width:112px;height:94px;object-fit:contain}
+.hero .dwl{display:flex;align-items:center;padding-inline-start:20px;border-inline-start:2px solid rgba(255,255,255,.55)}
+.hero .dwl img{height:86px;width:auto;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:.96}
 .hero .tt{display:flex;flex-direction:column;gap:8px;flex:1 1 320px}
 .hero h1{font-size:28px;color:#fff}
 .hero .chip2{display:inline-block;border-radius:999px;padding:4px 14px;font-size:14px;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45)}
@@ -497,6 +499,8 @@ async function pick(id){
  try{const r=await B.getReport(id);S.items=r.items||[];S.status=r.status||'NONE';S.pdfUrl=r.pdfUrl||'';}catch(e){S.items=[];S.status='NONE';say(e.message,'err');}
  S.cls=curStudent().class;render();
 }
+const heroDeptLogo=()=>{const cs=curStudent(),lg=deptLogo((cs&&cs.department)||(S.user&&S.user.department)||'');return lg?'<div class=\"dwl\" aria-hidden=\"true\"><img src=\"'+lg+'\" alt=\"\"></div>':'';};
+const heroDeptName=()=>{const cs=curStudent(),d=(cs&&cs.department)||(S.user&&S.user.department)||'';return /diploma|دبلوما/i.test(d)?'قسم الدبلوما':/special|خاصة/i.test(d)?'قسم التربية الخاصة':/all|الكل/i.test(d)&&!cs?'جميع الأقسام':'القسم الأهلي';};
 const periodTxt=()=>{const p=(S.user&&S.user.period)||{semester:'الفصل الدراسي الأول',label:'الفترة الأولى'};return p.semester+' · '+p.label;};
 const has=(cat,t)=>S.items.some(i=>i.category===cat&&i.text===t);
 const editable=()=>['NONE','DRAFT'].includes(S.status)&&['counselor','deputy','admin'].includes(S.user.role);
@@ -564,10 +568,12 @@ function sheetHtml(name,items,cls,dept){
 /* الرسم */
 function optsHtml(cat){
  const cs=curStudent(),want=isEnDept(cs&&cs.department)?'en':'ar';
- const lib=S.lib.filter(l=>l.category===cat&&(l.lang||'ar')===want).map(l=>l.text);
+ const langOf=l=>l.lang||(/[\u0600-\u06FF]/.test(l.text)?'ar':'en'); // يعمل حتى مع خادم قديم لا يعيد lang
+ const lib=S.lib.filter(l=>l.category===cat&&langOf(l)===want).map(l=>l.text);
  const extra=S.items.filter(i=>i.category===cat&&!lib.includes(i.text)).map(i=>i.text);
  const cnt=S.items.filter(i=>i.category===cat).length,ed=editable();
- return extra.concat(lib).map(t=>{const ch=has(cat,t),dis=!ed||(!ch&&cnt>=MAX[cat]);
+ const none=!lib.length?'<div class="sub" style="padding:8px 2px">'+(want==='en'?'مكتبة العبارات الإنجليزية لهذا القسم قيد التهيئة.':'لا توجد عبارات جاهزة.')+'</div>':'';
+ return none+extra.concat(lib).map(t=>{const ch=has(cat,t),dis=!ed||(!ch&&cnt>=MAX[cat]);
   return '<label class="o"'+(dis&&!ch?' style="opacity:.5"':'')+'><input type="checkbox" data-cat="'+cat+'" data-t="'+esc(t)+'"'+(ch?' checked':'')+(dis?' disabled':'')+'><span dir="auto">'+esc(t)+'</span></label>';}).join('');
 }
 function actionsHtml(){
@@ -587,8 +593,8 @@ function render(){
  const users=B.isMock?B.users():[];
  const stu=curStudent();
  $('#app').innerHTML=
- "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+
- "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">"+esc(periodTxt())+"</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · القسم الأهلي"+"</div>"+
+ "<header class=\"hero\"><img class=\"emb\" src=\"assets/wm_white.png\" alt=\"\" aria-hidden=\"true\"><div class=\"logo\"><img src=\"assets/logo.png\" alt=\"شعار مدارس دار الفرسان الأهلية\"></div>"+heroDeptLogo()+
+ "<div class=\"tt\"><div class=\"row\"><span class=\"chip2\">العام الدراسي "+esc(DEMO.year)+"هـ</span><span class=\"chip2 w\">"+esc(periodTxt())+"</span></div><h1>تقارير الأداء السلوكي والأكاديمي</h1><div class=\"sub2\">مدارس دار الفرسان الأهلية · "+esc(heroDeptName())+"</div>"+
  "<div class=\"ctl\">"+(B.isMock&&u.role==="admin"?"<button class=\"btn\" id=\"reset\">تصفير التجربة</button>":"")+"<span class=\"badge\">"+esc(u.name)+" · "+ROLE_AR[u.role]+" · "+stageLabel(u)+"</span>"+badgesFor(u).map(b=>"<span class=\"pl "+b[2]+"\"><b>"+b[1]+"</b> "+b[0]+"</span>").join("")+"<button class=\"btn\" id=\"logout\">تسجيل الخروج</button></div></div>"+
  "<div class=\"prog\"><div class=\"row\" style=\"justify-content:space-between;font-weight:700\"><span>المعتمد/المنشور ضمن نطاقك</span><span>"+done+" من "+vis.length+"</span></div><div class=\"bar\"><i style=\"width:"+pct+"%\"></i></div></div></header>"+
  usersBarHtml()+dashHtml()+maintHtml()+

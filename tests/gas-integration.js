@@ -94,6 +94,8 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   const shSp = await p.evaluate(() => sheetHtml('طالب', [], 'الرابع الابتدائي فصل المجد', 'التربية الخاصة'));
   ok(shAr.includes('شريكنا ولي أمر الطالب') && shAr.includes('dir="rtl"') && !shAr.includes('dlogo'), 'تقرير الأهلي: عربي RTL بلا شعار قسم إضافي');
   ok(shEn.includes('Dear Parent/Guardian') && shEn.includes('Positive Aspects') && shEn.includes('Recommendations') && shEn.includes('dir="ltr"') && shEn.includes('logo_diploma.png') && !/[\u0600-\u06FF]/.test(shEn.replace(/<[^>]*>/g, '')), 'تقرير الدبلوما: مترجم بالكامل إلى الإنجليزية LTR مع شعار القسم');
+  const opt = await p.evaluate(() => { const b = { l: S.lib, c: S.cur, s: S.students }; S.students = [{ id: 'X', name: 'A', class: 'Grade 3', department: 'الدبلوما الأمريكية', stage: 'primary', status: 'NONE' }]; S.cur = 'X'; S.lib = [{ category: 'strength', text: 'Participates actively.' }, { category: 'strength', text: 'يشارك بفاعلية' }]; const h = optsHtml('strength') + '||' + heroDeptLogo(); S.lib = b.l; S.cur = b.c; S.students = b.s; return h; });
+  ok(opt.includes('Participates actively.') && !opt.includes('يشارك بفاعلية') && opt.includes('logo_diploma.png'), 'طالب الدبلوما: خيارات العبارات الإنجليزية تظهر (حتى لو لم يعد الخادم lang) وشعار القسم في الترويسة');
   ok(shSp.includes('logo_special.png') && shSp.includes('شريكنا'), 'تقرير التربية الخاصة: عربي مع شعار القسم بجانب شعار المدرسة');
   ok((await p.textContent('.hero')).includes('موجه الابتدائي'), 'الموجه يدخل بحساب الدور ورمزه');
   const cls = await p.$$eval('[data-cls]', e => e.map(x => x.textContent));
