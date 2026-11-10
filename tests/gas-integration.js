@@ -135,9 +135,10 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   const pctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
   const pp = await pctx.newPage(); const perrs = []; const seen = [];
   pp.on('pageerror', e => perrs.push(e.message));
-  let slowMs = 0;
+  let slowMs = 0, blockBoot = false;
   await pctx.route(/script\.google\.com\/macros\/s\/.+\/exec/, async route => {
     if (slowMs) await new Promise(r => setTimeout(r, slowMs));
+    if (blockBoot && /api_boot/.test(route.request().postData() || '')) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: false, error: 'طلب غير مسموح.' }) });
     const req = route.request(); seen.push({ m: req.method(), ct: req.headers()['content-type'] || '' });
     if (req.method() !== 'POST') return route.fulfill({ status: 405, body: 'no' });
     const body = req.postData(); const res = __doPost(body);
@@ -151,6 +152,11 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   await plogin('مدير المدرسة', 'خطأ');
   ok((await pp.textContent('#lerr')).includes('غير صحيحة'), 'Pages: رمز المدير الخاطئ يُرفض من الخادم');
   cacheMap.clear();
+  blockBoot = true;
+  await plogin('موجه الابتدائي', ''); await pp.waitForSelector('.hero');
+  ok((await pp.$$eval('[data-stu]', e => e.length)) > 0, 'خادم قديم بلا api_boot: الواجهة تعود للاستدعاءات المنفصلة ويمكن الدخول');
+  blockBoot = false;
+  await pp.click('#logout'); await pp.waitForSelector('#gu');
   await plogin('موجه الابتدائي', ''); await pp.waitForSelector('.hero');
   slowMs = 900;
   const nxt = await pp.$$eval('[data-stu]', e => e.map(x => x.dataset.stu));

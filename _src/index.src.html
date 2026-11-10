@@ -485,7 +485,10 @@ async function showGasLogin(msg){
  const f=$('#gu');if(f)f.focus();
 }
 async function loadAll(){
- if(B.boot){const r=await B.boot();S.user=r.user;S.students=r.students;S.lib=r.library;S.stats=r.stats;Guard.set(S.user.role!=='admin');return;}
+ if(B.boot){ // استدعاء واحد؛ وإن كان الخادم المنشور أقدم (بلا api_boot) نعود للاستدعاءات المنفصلة
+  try{const r=await B.boot();S.user=r.user;S.students=r.students;S.lib=r.library;S.stats=r.stats;Guard.set(S.user.role!=='admin');return;}
+  catch(e){if(!/طلب غير مسموح|api_boot|not a function/.test(e.message))throw e;}
+ }
  S.user=await B.me();Guard.set(S.user.role!=='admin');S.students=await B.students();S.lib=await B.library();S.stats=await B.stats();}
 async function switchUser(email){await saveChain;await B.as(email);await loadAll();S.cls=classes()[0];S.cur=null;S.items=[];S.status='NONE';S.q='';S.msg='';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);}
 async function pick(id){
