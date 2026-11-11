@@ -553,12 +553,24 @@ const T_EN={g1:'Dear Parent/Guardian of the student: ',g2:'Assalamu Alaikum wa R
  ft:'May Allah protect you and keep you well. With our best wishes.'};
 const PERIOD_DEF={code:'S1P1',semester:'الفصل الدراسي الأول',label:'الفترة الأولى'};
 const ISSUE_DEF={S1P1:'2026-11-19',S1P2:'2027-01-07'};
+// الهجري للتواريخ الرسمية المعتمدة ثابت (من تقويم وزارة التعليم 1448) فلا يعتمد على دعم المتصفح لتقويم أم القرى
+const HIJRI_KNOWN={'2026-11-19':[9,6,1448],'2027-01-07':[29,7,1448]};
+const HM_AR=['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const HM_EN=['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Ula','Jumada al-Thani','Rajab','Shaban','Ramadan','Shawwal','Dhu al-Qidah','Dhu al-Hijjah'];
+function hijriParts(iso){
+ if(HIJRI_KNOWN[iso])return HIJRI_KNOWN[iso];
+ try{const f=new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn',{timeZone:'UTC',day:'numeric',month:'numeric',year:'numeric'});
+  if(!/islamic/.test(f.resolvedOptions().calendar))return null;
+  const pr=f.formatToParts(new Date(iso+'T12:00:00Z')),g=t=>+((pr.find(x=>x.type===t)||{}).value);
+  const d=g('day'),m=g('month'),y=g('year');return d>=1&&d<=30&&m>=1&&m<=12&&y>1300&&y<1600?[d,m,y]:null;}catch(e){return null;}}
+const hijriText=(iso,en)=>{const h=hijriParts(iso);return h?h[0]+' '+(en?HM_EN:HM_AR)[h[1]-1]+' '+h[2]+(en?' AH':' هـ'):'';};
 const PERIOD_EN={S1P1:'Period 1 Report - First Semester',S1P2:'Period 2 Report - First Semester',S2P1:'Period 1 Report - Second Semester',S2P2:'Period 2 Report - Second Semester'};
 const curPeriod=()=>{const p=Object.assign({},PERIOD_DEF,(S.user&&S.user.period)||{});if(!p.date)p.date=ISSUE_DEF[p.code]||'';return p;};
 const fmtIso=(iso,loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'UTC'},o)).format(new Date(iso+'T12:00:00Z'));}catch(e){return '';}};
 function issueDate(en){const p=curPeriod(),o={day:'numeric',month:'long',year:'numeric'};
  if(!p.date){return en?fmtDate('en-GB',o)||'':(fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',o)+' الموافق '+fmtDate('ar-SA-u-ca-gregory-nu-latn',o)+'م');}
- return en?fmtIso(p.date,'en-GB',o)+' · '+fmtIso(p.date,'en-u-ca-islamic-umalqura-nu-latn',o):fmtIso(p.date,'ar-SA-u-ca-islamic-umalqura-nu-latn',o)+' الموافق '+fmtIso(p.date,'ar-SA-u-ca-gregory-nu-latn',o)+'م';}
+ const h=hijriText(p.date,en);
+ return en?fmtIso(p.date,'en-GB',o)+(h?' · '+h:''):(h?h+' الموافق ':'')+fmtIso(p.date,'ar-SA-u-ca-gregory-nu-latn',o)+'م';}
 function sheetHtml(name,items,cls,dept){
  const en=isEnDept(dept),T=en?T_EN:T_AR,lg=deptLogo(dept),sep=en?'border-right':'border-left';
  const g=c=>items.filter(i=>i.category===c).map(i=>i.text);
