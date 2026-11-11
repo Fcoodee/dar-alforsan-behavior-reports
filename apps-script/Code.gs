@@ -14,8 +14,10 @@
 
 var YEAR = '1448-1449';
 // الفترات: دورتان في كل فصل دراسي. الفترة الحالية تُضبط من ورقة Config (المفتاح «الفترة الحالية»)؛ الافتراضي S1P1.
-var PERIODS = { S1P1: { semester: 'الفصل الدراسي الأول', label: 'الفترة الأولى' }, S1P2: { semester: 'الفصل الدراسي الأول', label: 'الفترة الثانية' },
-                S2P1: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الأولى' }, S2P2: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الثانية' } };
+// issue = تاريخ إصدار التقرير الافتراضي (ISO) وفق التقويم الرسمي لوزارة التعليم 1448: S1P1 آخر يوم قبل إجازة الخريف (الخميس 19-11-2026)، S1P2 آخر يوم دراسة قبل إجازة منتصف العام (الخميس 7-1-2027).
+// يمكن تجاوزه من ورقة Config بالمفتاح «تاريخ إصدار الفترة الحالية» (القيمة yyyy-MM-dd).
+var PERIODS = { S1P1: { semester: 'الفصل الدراسي الأول', label: 'الفترة الأولى', issue: '2026-11-19' }, S1P2: { semester: 'الفصل الدراسي الأول', label: 'الفترة الثانية', issue: '2027-01-07' },
+                S2P1: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الأولى', issue: '' }, S2P2: { semester: 'الفصل الدراسي الثاني', label: 'الفترة الثانية', issue: '' } };
 var DEFAULT_PERIOD = 'S1P1';
 var ROLES = ['counselor', 'deputy', 'principal', 'admin'];
 var STAGES = ['primary', 'middle', 'secondary'];
@@ -86,7 +88,19 @@ function period_() {
   cache.put('cfg_period', p, 60);
   return p;
 }
-function periodInfo_() { var c = period_(); return { code: c, semester: PERIODS[c].semester, label: PERIODS[c].label }; }
+function issueDate_(c) {
+  var d = PERIODS[c].issue;
+  try {
+    var row = table_('Config').filter(function (r) { return ['تاريخ إصدار الفترة الحالية', 'issue_date'].indexOf(trim_(r.key)) >= 0; })[0];
+    if (row) {
+      var v = row.value;
+      if (v && typeof v.getTime === 'function') d = Utilities.formatDate(v, 'Asia/Riyadh', 'yyyy-MM-dd');
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(trim_(v))) d = trim_(v);
+    }
+  } catch (e) {}
+  return d;
+}
+function periodInfo_() { var c = period_(); return { code: c, semester: PERIODS[c].semester, label: PERIODS[c].label, date: issueDate_(c) }; }
 function repOf_(r, P) { return r.year === YEAR && (trim_(r.period) || DEFAULT_PERIOD) === P; }
 
 function norm_(map, v) { var t = trim_(v); return map[t] || t.toLowerCase(); }

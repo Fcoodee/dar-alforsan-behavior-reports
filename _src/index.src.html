@@ -186,7 +186,8 @@ body{padding-bottom:52px}
 .sheet .ft{text-align:center;font-size:14px;font-weight:800}
 .sheet .dlogo{position:absolute;left:50%;top:60px;transform:translateX(-50%);max-height:80px;max-width:120px;object-fit:contain}
 .sheet.en{font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;text-align:left}
-.sheet.en h2{font-size:20px}
+.sheet h2 .dt{display:block;font-size:15px;font-weight:700;margin-top:4px;color:#2b3b49}
+.sheet.en h2{font-size:22px}
 .sheet.en p{font-size:12px;line-height:1.6}
 .sheet.en .td+.td{border-right:0;border-left:1px solid #9fb0bd}
 #printArea{display:none}
@@ -540,23 +541,31 @@ async function go(to){
 /* التقرير */
 const isEnDept=d=>/diploma|دبلوما/i.test(d||'');
 const deptLogo=d=>/diploma|دبلوما/i.test(d||'')?'assets/logo_diploma.png':/special|خاصة/i.test(d||'')?'assets/logo_special.png':'';
-const T_AR={t:y=>'الأداء السلوكي والأكاديمي للعام الدراسي '+y+'هـ',g1:'شريكنا ولي أمر الطالب/ ',g2:'السلام عليكم ورحمة الله وبركاته،،،',
- p1:'في ختام رحلة العام الدراسي الحالي، يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال العام وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.',
+const T_AR={g1:'شريكنا ولي أمر الطالب/ ',g2:'السلام عليكم ورحمة الله وبركاته،،،',
+ p1:'يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال هذه الفترة وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.',
  s:'النقاط الإيجابية ونقاط القوة',i:'نقاط تحتاج إلى دعم وتحسين',r:'التوصيات',
  p2:'نؤكد أن التعاون المستمر بين المدرسة والأسرة يمثل ركيزة أساسية في بناء شخصية الطالب ويعد من أهم عوامل نجاحه وتطوره سلوكيًا وأكاديميًا، ونأمل استثمار فترة الإجازة الصيفية في تعزيز الجوانب الإيجابية لدى الطالب وتنمية مهاراته والتركيز على السلوكيات التي تحتاج إلى متابعة وتوجيه. سائلين الله له دوام التوفيق والتميز.',
  ft:'حفظكم الله ورعاكم، وكل عام وأنتم بخير'};
-const T_EN={t:y=>'Behavioral and Academic Performance Report · Academic Year '+y+' AH',g1:'Dear Parent/Guardian of the student: ',g2:'Assalamu Alaikum wa Rahmatullahi wa Barakatuh,',
- p1:'At the end of this academic journey, we would like to extend our sincere thanks for your continued cooperation in supporting our student\'s progress. Having accompanied him throughout the year and observed his academic and behavioral performance in a variety of learning and educational situations, we were delighted by many of the positive aspects and wonderful strengths that distinguish him. At the same time, we have noted a few areas in which we look forward to working with you to give him further care and guidance. In doing so, we always take into account the nature of his age group and its developmental characteristics, with the aim of strengthening his excellence and supporting every opportunity that contributes to his continued growth and development.',
+const T_EN={g1:'Dear Parent/Guardian of the student: ',g2:'Assalamu Alaikum wa Rahmatullahi wa Barakatuh,',
+ p1:'We are pleased to extend our sincere thanks for your continued cooperation in supporting our student\'s progress. Having accompanied him throughout this period and observed his academic and behavioral performance in a variety of learning and educational situations, we were delighted by many of the positive aspects and wonderful strengths that distinguish him. At the same time, we have noted a few areas in which we look forward to working with you to give him further care and guidance. In doing so, we always take into account the nature of his age group and its developmental characteristics, with the aim of strengthening his excellence and supporting every opportunity that contributes to his continued growth and development.',
  s:'Positive Aspects & Strengths',i:'Areas Needing Support & Improvement',r:'Recommendations',
  p2:'We affirm that continued cooperation between school and family is a cornerstone in building the student\'s character and one of the most important factors in his behavioral and academic success and development. We hope the summer break will be used to reinforce his positive qualities, develop his skills and focus on the behaviors that need follow-up and guidance. We ask Allah to grant him continued success and excellence.',
  ft:'May Allah protect you and keep you well. With our best wishes.'};
+const PERIOD_DEF={code:'S1P1',semester:'الفصل الدراسي الأول',label:'الفترة الأولى'};
+const ISSUE_DEF={S1P1:'2026-11-19',S1P2:'2027-01-07'};
+const PERIOD_EN={S1P1:'Period 1 Report - First Semester',S1P2:'Period 2 Report - First Semester',S2P1:'Period 1 Report - Second Semester',S2P2:'Period 2 Report - Second Semester'};
+const curPeriod=()=>{const p=Object.assign({},PERIOD_DEF,(S.user&&S.user.period)||{});if(!p.date)p.date=ISSUE_DEF[p.code]||'';return p;};
+const fmtIso=(iso,loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'UTC'},o)).format(new Date(iso+'T12:00:00Z'));}catch(e){return '';}};
+function issueDate(en){const p=curPeriod(),o={day:'numeric',month:'long',year:'numeric'};
+ if(!p.date){return en?fmtDate('en-GB',o)||'':(fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',o)+' الموافق '+fmtDate('ar-SA-u-ca-gregory-nu-latn',o)+'م');}
+ return en?fmtIso(p.date,'en-GB',o)+' · '+fmtIso(p.date,'en-u-ca-islamic-umalqura-nu-latn',o):fmtIso(p.date,'ar-SA-u-ca-islamic-umalqura-nu-latn',o)+' الموافق '+fmtIso(p.date,'ar-SA-u-ca-gregory-nu-latn',o)+'م';}
 function sheetHtml(name,items,cls,dept){
  const en=isEnDept(dept),T=en?T_EN:T_AR,lg=deptLogo(dept),sep=en?'border-right':'border-left';
  const g=c=>items.filter(i=>i.category===c).map(i=>i.text);
  const a=g('strength'),b=g('improve'),r=g('recommend'),n=Math.max(a.length,b.length,1);
  let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
  return '<div class="sheet'+(en?' en':'')+'" dir="'+(en?'ltr':'rtl')+'"><img class="bg" src="assets/bg.png" alt="">'+(lg?'<img class="dlogo" src="'+lg+'" alt="">':'')+'<div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
- '<h2>'+esc(T.t(DEMO.year))+'</h2>'+
+ '<h2>'+esc(en?PERIOD_EN[curPeriod().code]||'Period Report':'تقرير '+curPeriod().label+' - '+curPeriod().semester)+'<span class="dt">'+esc((en?'Date: ':'بتاريخ: ')+issueDate(en))+'</span></h2>'+
  '<div><div class="g1">'+esc(T.g1)+esc(name)+(cls?' <span class="gcl">( '+L(cls)+' )</span>':'')+'</div><div class="g2">'+esc(T.g2)+'</div></div>'+
  '<p>'+esc(T.p1)+'</p>'+
  '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;'+sep+':1px solid #9fb0bd">'+esc(T.s)+'</div><div class="th" style="background:#fbecc8;color:#5c4306">'+esc(T.i)+'</div></div>'+rows+'</div>'+
