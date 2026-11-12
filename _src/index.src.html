@@ -46,6 +46,13 @@ legend{font-weight:800;padding:0 6px;font-size:14px}
 .fs-s{border:1px solid #b9d3bf;background:#f6fbf7}.fs-s legend{color:var(--ok)}
 .fs-i{border:1px solid #e3cf9a;background:#fffaf0}.fs-i legend{color:var(--warn)}
 .fs-r{border:1px solid #b4cde3;background:#f4f9fd}.fs-r legend{color:var(--info)}
+#bulkDlg{max-width:920px}
+#bulkDlg .bl{max-height:260px;overflow:auto;border:1px solid #c3cfd8;border-radius:8px;padding:4px 8px;display:flex;flex-direction:column;gap:2px}
+#bulkDlg .bl label{display:flex;gap:8px;align-items:center;min-height:36px;font-size:13.5px}
+#bulkDlg .bl .gc{background:#eaf3f9;color:#14425f;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+#bulkDlg .bgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:760px){#bulkDlg .bgrid{grid-template-columns:1fr}}
+#bulkDlg .bmsg{min-height:24px;font-weight:700}#bulkDlg .bmsg.ok{color:var(--ok)}#bulkDlg .bmsg.err{color:#a02020}
 .opts{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 label.o{min-height:36px;display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.5;padding:4px 2px}
 label.o input{width:18px;height:18px;margin-top:2px;flex:none}
@@ -204,6 +211,7 @@ body{padding-bottom:52px}
 <div id="app"></div>
 <div id="printArea" aria-hidden="true"></div>
 <dialog id="zoomDlg"><div id="zoomBody" style="overflow:auto;max-height:82vh;max-width:100%;-webkit-overflow-scrolling:touch"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
+<dialog id="bulkDlg" aria-label="إجراءات جماعية"><div id="bulkBody"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
 <dialog id="auditDlg"><div id="auditBody"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
 <script src="data.js"></script>
 <script src="access.js"></script>
@@ -264,6 +272,16 @@ const Mock=(()=>{
    return wait({status:to,pdfUrl:r.pdfUrl||''});}catch(e){return fail(e)}},
   stats(){const o={};['primary','middle','secondary'].forEach(k=>o[k]={total:0,NONE:0,DRAFT:0,SUBMITTED:0,REVIEWED:0,APPROVED:0,PUBLISHED:0});
    DEMO.students.forEach(s=>{const k=(db.reports[s.id]||{}).status||'NONE';o[s.stage].total++;o[s.stage][k]++;});return wait({stages:o});},
+  getReports(ids){try{const o={};ids.forEach(id=>{stu(id);const r=db.reports[id];o[id]=r?{status:r.status,items:r.items}:{status:'NONE',items:[]};});return wait(o);}catch(e){return fail(e)}},
+  bulkApply(ids,items,ow){try{
+   if(!['counselor','deputy','admin'].includes(ctx.role))throw new Error('لا صلاحية للتعديل.');
+   if(!ids.length)throw new Error('اختر طلاباً أولاً.');if(!items.length)throw new Error('اختر عبارات للتطبيق.');
+   const lib=new Set(DEMO.library.map(l=>l.text));items.forEach(i=>{if(!lib.has(i.text))throw new Error('العبارات الإضافية غير متاحة؛ اختر من مكتبة العبارات.');});
+   const applied=[],skipped=[];
+   [...new Set(ids)].forEach(id=>{try{stu(id);}catch(e){skipped.push({id,reason:'غير متاح'});return;}
+    const r=db.reports[id];if(r&&r.status!=='DRAFT'){skipped.push({id,reason:'مقفل'});return;}if(r&&!ow){skipped.push({id,reason:'لديه مسودة'});return;}
+    db.reports[id]={status:'DRAFT',items:items.map(x=>({category:x.category,text:x.text,source:'library'})),by:ctx.email,updated:new Date().toISOString()};log('BULK_APPLY','R-'+id,items.length+' بنود (تطبيق جماعي)');applied.push(id);});
+   save();return wait({applied,skipped});}catch(e){return fail(e)}},
   audit:()=>wait(db.audit.slice(-60).reverse()),
   reset(){db={reports:{},audit:[]};save();}
  };
@@ -290,7 +308,7 @@ const mkBackend=call0=>{const call=(fn,...a)=>Busy.run(()=>call0(fn,...a)); // �
  return{isMock:false,hasToken:()=>!!token,users:()=>call('api_users'),
   async login(u,p){const r=await call('api_login',u,p);token=r.token;try{sessionStorage.setItem('dfa_tok',token);}catch(e){}return r.user;},
   async logout(){try{await au('api_logout');}catch(e){}token=null;try{sessionStorage.removeItem('dfa_tok');}catch(e){}},
-  as:()=>au('api_me'),me:()=>au('api_me'),boot:()=>au('api_boot'),saveReportQ:(id,i)=>auq('api_saveReport',id,i),students:()=>au('api_students'),library:()=>au('api_library'),
+  as:()=>au('api_me'),me:()=>au('api_me'),boot:()=>au('api_boot'),getReports:ids=>au('api_getReports',ids),bulkApply:(ids,items,ow)=>au('api_bulkApply',ids,items,ow),saveReportQ:(id,i)=>auq('api_saveReport',id,i),students:()=>au('api_students'),library:()=>au('api_library'),
   getReport:id=>au('api_getReport',id),saveReport:(id,i)=>au('api_saveReport',id,i),transition:(id,t,r)=>au('api_transition',id,t,r),audit:()=>au('api_audit'),stats:()=>au('api_stats'),reset(){}};};
 const Gas=mkBackend(gasCall);
 const Remote=API_URL?mkBackend(remoteCall):null;
@@ -536,6 +554,7 @@ async function go(to){
 }
 
 /* التقرير */
+const langOf=l=>l.lang||(/[\u0600-\u06FF]/.test(l.text)?'ar':'en'); // يعمل حتى مع خادم قديم لا يعيد lang
 const isEnDept=d=>/diploma|دبلوما/i.test(d||'');
 const deptLogo=d=>/diploma|دبلوما/i.test(d||'')?'assets/logo_diploma.png':/special|خاصة/i.test(d||'')?'assets/logo_special.png':'';
 const T_AR={g1:'شريكنا ولي أمر الطالب/ ',g2:'السلام عليكم ورحمة الله وبركاته،،،',
@@ -586,7 +605,6 @@ function sheetHtml(name,items,cls,dept){
 /* الرسم */
 function optsHtml(cat){
  const cs=curStudent(),want=isEnDept(cs&&cs.department)?'en':'ar';
- const langOf=l=>l.lang||(/[\u0600-\u06FF]/.test(l.text)?'ar':'en'); // يعمل حتى مع خادم قديم لا يعيد lang
  const lib=S.lib.filter(l=>l.category===cat&&langOf(l)===want).map(l=>l.text);
  const extra=S.items.filter(i=>i.category===cat&&!lib.includes(i.text)).map(i=>i.text);
  const cnt=S.items.filter(i=>i.category===cat).length,ed=editable();
@@ -629,7 +647,7 @@ function render(){
   actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
  '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
   '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
-  '<button class="btn" id="zoom">عرض بالحجم الكامل</button>'+(['principal','admin'].includes(S.user.role)?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
+  '<button class="btn" id="zoom">عرض بالحجم الكامل</button><button class="btn" id="bulk">إجراءات جماعية</button>'+(['principal','admin'].includes(S.user.role)?'<button class="btn" id="audit">سجل التدقيق</button>':'')+'</div>'+
   (S.pdfUrl?'<div class="sub" style="margin-top:6px">رابط الـ PDF: '+esc(S.pdfUrl)+'</div>':'')+'</div>'+
   '<div class="wrap" id="pw"><div class="scaled"><div class="sheet-host" id="host"></div></div></div></section></div>';
  const host=$('#host');
@@ -651,9 +669,118 @@ function bind(){
  const rs=$('#reset');if(rs)rs.onclick=async()=>{B.reset();await loadAll();S.cur=null;S.items=[];S.status='NONE';render();const f=S.students.find(s=>s.class===S.cls);if(f)await pick(f.id);};
  const sc=$('#scope');if(sc)sc.onchange=()=>{S.printScope=sc.value;};
  const pr=$('#print');if(pr)pr.onclick=doPrint;
+ const bk=$('#bulk');if(bk)bk.onclick=openBulk;
  const zm=$('#zoom');if(zm)zm.onclick=()=>{const st=curStudent();if(!st)return;$('#zoomBody').innerHTML=sheetHtml(st.name,S.items,st.class,st.department);openDlg($('#zoomDlg'));};
  const au=$('#audit');if(au)au.onclick=async()=>{const rows=await B.audit();$('#auditBody').innerHTML='<h3>سجل التدقيق (آخر 60)</h3><table class="au"><tr><th>الوقت</th><th>الحساب</th><th>الإجراء</th><th>الهدف</th><th>تفصيل</th></tr>'+rows.map(x=>'<tr><td>'+esc(x.ts.slice(0,19).replace('T',' '))+'</td><td>'+esc(x.email)+'</td><td>'+x.action+'</td><td>'+esc(x.target)+'</td><td>'+esc(x.detail)+'</td></tr>').join('')+'</table>';openDlg($('#auditDlg'));};
 }
+
+/* ═════════ التصدير الجماعي: PDF لكل طالب (ملف مضغوط) — توليد داخل المتصفح بلا خادم ═════════ */
+const Exp=(()=>{
+ const W=794,H=1123,SC=2;let css=null;const imgs={};
+ const cssText=()=>{if(css!==null)return css;let t='';for(const ss of document.styleSheets){try{for(const r of ss.cssRules){if(r.type===1)t+=r.cssText+'\n';}}catch(e){}}return css=t;};
+ async function dataUrl(path){if(imgs[path])return imgs[path];const u=(window.__ASSETS&&window.__ASSETS[path])||path;const b=await(await fetch(u)).blob();
+  return imgs[path]=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b);});}
+ async function inline(html){const ps=[...new Set([...html.matchAll(/src="(assets\/[^"]+)"/g)].map(m=>m[1]))];for(const p of ps)html=html.split('src="'+p+'"').join('src="'+await dataUrl(p)+'"');return html;}
+ async function toJpeg(html){
+  const tmp=document.createElement('div');tmp.innerHTML=await inline(html);
+  const xml=new XMLSerializer().serializeToString(tmp.firstElementChild);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W*SC+'" height="'+H*SC+'" viewBox="0 0 '+W+' '+H+'"><foreignObject x="0" y="0" width="'+W+'" height="'+H+'"><div xmlns="http://www.w3.org/1999/xhtml" style="width:'+W+'px;height:'+H+'px"><style><![CDATA['+cssText()+']]></style>'+xml+'</div></foreignObject></svg>';
+  const im=new Image();await new Promise((res,rej)=>{im.onload=res;im.onerror=()=>rej(new Error('تعذر رسم التقرير في هذا المتصفح.'));im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);});
+  const cv=document.createElement('canvas');cv.width=W*SC;cv.height=H*SC;const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(im,0,0);
+  const blob=await new Promise((res,rej)=>{try{cv.toBlob(b=>b?res(b):rej(new Error('تعذر إنشاء الصورة.')),'image/jpeg',0.92);}catch(e){rej(new Error('هذا المتصفح لا يسمح بالتصدير؛ استخدم Chrome أو Edge.'));}});
+  return{bytes:new Uint8Array(await blob.arrayBuffer()),w:cv.width,h:cv.height};}
+ function pdf(j){
+  const enc=new TextEncoder(),parts=[],offs=[];let off=0;
+  const push=b=>{const u=typeof b==='string'?enc.encode(b):b;parts.push(u);off+=u.length;};
+  push(new Uint8Array([37,80,68,70,45,49,46,52,10,37,226,227,207,211,10]));
+  const obj=(n,body)=>{offs[n]=off;push(n+' 0 obj\n');push(body);push('\nendobj\n');};
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');obj(2,'<</Type/Pages/Kids[3 0 R]/Count 1>>');
+  obj(3,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>');
+  offs[4]=off;push('4 0 obj\n<</Type/XObject/Subtype/Image/Width '+j.w+'/Height '+j.h+'/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length '+j.bytes.length+'>>\nstream\n');push(j.bytes);push('\nendstream\nendobj\n');
+  const c='q 595.28 0 0 841.89 0 0 cm /Im0 Do Q';obj(5,'<</Length '+c.length+'>>\nstream\n'+c+'\nendstream');
+  const xr=off;push('xref\n0 6\n0000000000 65535 f \n');for(let n=1;n<=5;n++)push(String(offs[n]).padStart(10,'0')+' 00000 n \n');
+  push('trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n'+xr+'\n%%EOF\n');
+  const out=new Uint8Array(off);let q=0;parts.forEach(u=>{out.set(u,q);q+=u.length;});return out;}
+ const crcT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+ const crc=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=crcT[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;};
+ function zip(files){
+  const enc=new TextEncoder(),ch=[],cd=[];let off=0;
+  const u16=n=>[n&255,(n>>8)&255],u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];
+  files.forEach(f=>{const nm=enc.encode(f.name),c=crc(f.data),len=f.data.length;
+   const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(len),...u32(len),...u16(nm.length),...u16(0)]);
+   ch.push(lh,nm,f.data);
+   cd.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(len),...u32(len),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
+   off+=lh.length+nm.length+len;});
+  const cdLen=cd.reduce((a,b)=>a+b.length,0);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdLen),...u32(off),...u16(0)]);
+  const all=[...ch,...cd,end],tot=all.reduce((a,b)=>a+b.length,0),out=new Uint8Array(tot);let q=0;all.forEach(u=>{out.set(u,q);q+=u.length;});return out;}
+ function save(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);}
+ async function run(ids,progress,download=true){
+  const eligible=ids.map(id=>S.students.find(s=>s.id===id)).filter(s=>s&&['APPROVED','PUBLISHED'].includes(s.status));
+  const skipped=ids.length-eligible.length;if(!eligible.length)return{count:0,skipped};
+  const reps=B.getReports?await B.getReports(eligible.map(s=>s.id)):null;
+  const files=[];let i=0;
+  for(const s of eligible){const r=reps?reps[s.id]:await B.getReport(s.id);
+   const j=await toJpeg(sheetHtml(s.name,(r&&r.items)||[],s.class,s.department));files.push({name:s.id+'.pdf',data:pdf(j)});
+   if(progress)progress(++i,eligible.length);}
+  const d=new Date(),stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  let blob,name;
+  if(files.length===1){blob=new Blob([files[0].data],{type:'application/pdf'});name=files[0].name;}
+  else{blob=new Blob([zip(files)],{type:'application/zip'});name='reports-'+stamp+'.zip';}
+  if(download)save(blob,name);
+  return{count:files.length,skipped,blob,name,files};}
+ return{run,zip,pdf,toJpeg};
+})();
+
+/* ═════════ إجراءات جماعية: تطبيق عبارات موحّدة على مجموعة + تصدير PDF لكل طالب ═════════ */
+function bulkState(){if(!S.bulk)S.bulk={sel:new Set(),cls:S.cls||'all',tpl:{strength:new Set(),improve:new Set(),recommend:new Set()},over:false,confirm:false,msg:'',kind:''};return S.bulk;}
+function bulkLang(){const en=[...bulkState().sel].map(id=>S.students.find(s=>s.id===id)).filter(Boolean).map(s=>isEnDept(s.department));return{mixed:en.some(x=>x)&&en.some(x=>!x),en:en[0]||false};}
+function bmsg(t,k){const b=bulkState();b.msg=t;b.kind=k||'';const m=$('#bmsg');if(m){m.textContent=t;m.className='bmsg '+(k||'');}}
+function renderBulk(keepScroll){
+ const b=bulkState(),canEdit=['counselor','deputy','admin'].includes(S.user.role),old=$('#bulkList');const sc=keepScroll&&old?old.scrollTop:0;
+ const shown=S.students.filter(s=>b.cls==='all'||s.class===b.cls),lg=bulkLang(),want=lg.en?'en':'ar';
+ const nApp=[...b.sel].filter(id=>{const s=S.students.find(x=>x.id===id);return s&&['APPROVED','PUBLISHED'].includes(s.status);}).length;
+ const tpl=['strength','improve','recommend'].map(c=>{const lib=S.lib.filter(l=>l.category===c&&langOf(l)===want),n=b.tpl[c].size,t={strength:'النقاط الإيجابية ونقاط القوة',improve:'نقاط تحتاج إلى دعم وتحسين',recommend:'التوصيات'}[c];
+  return '<fieldset class="'+{strength:'fs-s',improve:'fs-i',recommend:'fs-r'}[c]+'"><legend>'+t+' ('+n+'/'+MAX[c]+')</legend><div class="opts">'+(lib.length?lib.map(l=>{const ch=b.tpl[c].has(l.text),dis=!ch&&n>=MAX[c];return '<label class="o"'+(dis?' style="opacity:.5"':'')+'><input type="checkbox" data-bt="'+c+'" data-t="'+esc(l.text)+'"'+(ch?' checked':'')+(dis?' disabled':'')+'><span dir="auto">'+esc(l.text)+'</span></label>';}).join(''):'<div class="sub">لا عبارات '+(want==='en'?'إنجليزية':'عربية')+' في المكتبة.</div>')+'</div></fieldset>';}).join('');
+ const total=b.tpl.strength.size+b.tpl.improve.size+b.tpl.recommend.size;
+ $('#bulkBody').innerHTML='<h3 style="margin:0 0 8px">إجراءات جماعية</h3>'+
+  '<div class="row" style="margin-bottom:6px"><label class="sub">الفصل <select id="bcls" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="all"'+(b.cls==='all'?' selected':'')+'>كل الفصول</option>'+classes().map(c=>'<option value="'+esc(c)+'"'+(b.cls===c?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select></label>'+
+  '<button class="btn" id="bsall" type="button">تحديد المعروضين ('+shown.length+')</button><button class="btn" id="bsnone" type="button">إلغاء التحديد</button><span class="sub" id="bcount">المحدد: '+b.sel.size+' · المعتمد/المنشور منهم: '+nApp+'</span></div>'+
+  '<div class="bl" id="bulkList" role="group" aria-label="الطلاب">'+shown.map(s=>'<label><input type="checkbox" data-bs="'+esc(s.id)+'"'+(b.sel.has(s.id)?' checked':'')+'><span>'+esc(s.name)+'</span><span class="gc">'+L(s.class)+'</span><span class="sub">'+ST_AR[s.status]+'</span></label>').join('')+'</div>'+
+  (lg.mixed?'<div class="bmsg err">اختيارك يجمع طلاباً بلغتي تقرير مختلفتين (عربي وإنجليزي)؛ طبّق على كل لغة على حدة.</div>':'')+
+  (canEdit?'<h4 style="margin:12px 0 4px">① تطبيق عبارات موحّدة كمسودات</h4><div class="sub" style="margin-bottom:6px">للتعميم على مجموعة متقاربة فقط؛ راجع كل تقرير وعدّله فردياً قبل الإرسال. لا يُرسَل شيء تلقائياً، ولا يُمَسّ المرسَل أو المعتمد.</div><div class="bgrid">'+tpl+'</div>'+
+   '<label class="row" style="margin-top:6px;gap:8px"><input type="checkbox" id="bover"'+(b.over?' checked':'')+'><span>استبدال المسودات الموجودة (بتأكيد)</span></label>'+
+   (b.confirm?'<div class="row" style="margin-top:6px;padding:8px;border:1px solid #e3cf9a;background:#fffaf0;border-radius:8px"><span>سيُحفظ '+total+' عبارة كمسودة لـ <b>'+b.sel.size+'</b> طالباً'+(b.over?' (مع استبدال المسودات الموجودة)':'')+'. هل تؤكد؟</span><button class="btn pri" id="bgo" type="button">تأكيد التطبيق</button><button class="btn" id="bno" type="button">إلغاء</button></div>':'<div class="row" style="margin-top:6px"><button class="btn pri" id="bapply" type="button">تطبيق على المحددين</button></div>'):'')+
+  '<h4 style="margin:12px 0 4px">② تصدير PDF لكل طالب</h4><div class="sub" style="margin-bottom:6px">يشمل المعتمد والمنشور فقط من المحددين، في ملف مضغوط (ZIP) لكل طالب فيه ملف باسم رقمه الداخلي.</div>'+
+  '<div class="row"><button class="btn pri" id="bexp" type="button">تصدير PDF لكل طالب ('+nApp+')</button></div>'+
+  '<div class="bmsg'+(b.kind?' '+b.kind:'')+'" id="bmsg" role="status" aria-live="polite">'+esc(b.msg)+'</div>';
+ const nl=$('#bulkList');if(nl)nl.scrollTop=sc;
+ $('#bcls').onchange=e=>{b.cls=e.target.value;renderBulk();};
+ $('#bsall').onclick=()=>{shown.forEach(s=>b.sel.add(s.id));b.confirm=false;renderBulk();};
+ $('#bsnone').onclick=()=>{b.sel.clear();b.confirm=false;renderBulk();};
+ document.querySelectorAll('[data-bs]').forEach(i=>i.onchange=()=>{i.checked?b.sel.add(i.dataset.bs):b.sel.delete(i.dataset.bs);b.confirm=false;renderBulk(true);});
+ document.querySelectorAll('[data-bt]').forEach(i=>i.onchange=()=>{const set=b.tpl[i.dataset.bt];i.checked?set.add(i.dataset.t):set.delete(i.dataset.t);b.confirm=false;renderBulk(true);});
+ const ov=$('#bover');if(ov)ov.onchange=()=>{b.over=ov.checked;b.confirm=false;renderBulk(true);};
+ const ap=$('#bapply');if(ap)ap.onclick=()=>{
+  if(!b.sel.size)return bmsg('اختر طلاباً أولاً.','err');if(bulkLang().mixed)return bmsg('اختيارك يجمع لغتين؛ طبّق على كل لغة على حدة.','err');if(!total)return bmsg('اختر عبارات للتطبيق.','err');
+  b.confirm=true;renderBulk(true);};
+ const no=$('#bno');if(no)no.onclick=()=>{b.confirm=false;renderBulk(true);};
+ const go=$('#bgo');if(go)go.onclick=async()=>{
+  const items=[];['strength','improve','recommend'].forEach(c=>b.tpl[c].forEach(t=>items.push({category:c,text:t})));
+  b.confirm=false;bmsg('جارٍ التطبيق…');
+  try{await saveChain;const r=await B.bulkApply([...b.sel],items,b.over);
+   r.applied.forEach(id=>{const st=S.students.find(x=>x.id===id);if(st)st.status='DRAFT';});S.stats=r.stats||await B.stats();
+   if(S.cur&&r.applied.includes(S.cur)){const rr=await B.getReport(S.cur);S.items=rr.items||[];S.status=rr.status||'DRAFT';}
+   b.msg='طُبّقت العبارات على '+r.applied.length+' طالباً'+(r.skipped.length?'، وتخطّى '+r.skipped.length+' (لديه مسودة/مقفل/خارج الصلاحية)':'')+'.';b.kind='ok';render();renderBulk(true);}
+  catch(e){b.msg=e.message;b.kind='err';renderBulk(true);}};
+ $('#bexp').onclick=async()=>{
+  if(!b.sel.size)return bmsg('اختر طلاباً أولاً.','err');
+  try{bmsg('جارٍ التجهيز…');const r=await Exp.run([...b.sel],(i,n)=>bmsg('جارٍ توليد الملفات '+i+'/'+n+' …'));
+   if(!r.count)return bmsg('لا تقارير معتمدة أو منشورة بين المحددين.','err');
+   bmsg('تم تصدير '+r.count+' ملف PDF'+(r.skipped?'، وتخطّي '+r.skipped+' غير معتمد':'')+'.','ok');}
+  catch(e){bmsg(e.message,'err');}};
+}
+function openBulk(){const b=bulkState();if(!b._i&&S.cls){b.cls=S.cls;b._i=1;}renderBulk();openDlg($('#bulkDlg'));}
 async function doPrint(){
  const pa=$('#printArea');let html='';
  if(S.printScope==='class'){

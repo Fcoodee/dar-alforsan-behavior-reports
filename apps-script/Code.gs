@@ -514,6 +514,93 @@ function saveReport_(ctx, studentId, items) {
   } finally { lock.releaseLock(); }
 }
 
+/** يضيف عدة صفوف دفعة واحدة (كتابة واحدة بدل appendRow لكل صف). */
+function appendObjs_(name, objs) {
+  if (!objs.length) return;
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  var rows = objs.map(function (obj) {
+    return head.map(function (h) {
+      var t = trim_(h), val = '';
+      Object.keys(HDR[name]).forEach(function (k) { if (HDR[name][k].indexOf(t) >= 0 && obj[k] !== undefined) val = obj[k]; });
+      return val;
+    });
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, head.length).setValues(rows);
+}
+
+/** قراءة تقارير عدة طلاب باستدعاء واحد (للتصدير الجماعي). */
+function api_getReports(token, studentIds) { return getReports_(ctx_(token), studentIds); }
+function getReports_(ctx, ids) {
+  if (!ids || !ids.length) return {};
+  if (ids.length > 60) throw new Error('الحد الأقصى 60 طالباً في المرة الواحدة.');
+  var P = period_(), reps = {};
+  table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { reps[r.studentId] = r; });
+  var byRep = null, out = {};
+  ids.forEach(function (id) {
+    studentFor_(ctx, id);
+    var rep = reps[id];
+    if (!rep) { out[id] = { status: 'NONE', items: [] }; return; }
+    var items = cget_('itm_' + rep.id);
+    if (!items) {
+      if (!byRep) { byRep = {}; table_('Items').sort(function (a, b) { return a.order - b.order; }).forEach(function (i) { (byRep[i.reportId] = byRep[i.reportId] || []).push({ category: i.category, text: i.text, source: i.source }); }); }
+      items = byRep[rep.id] || []; cput_('itm_' + rep.id, items, 600);
+    }
+    out[id] = { id: rep.id, status: rep.status, items: items };
+  });
+  return out;
+}
+
+/** تطبيق العبارات نفسها (من المكتبة فقط) على مجموعة طلاب كمسودات. لا يمس المُرسَل/المعتمد، ولا يستبدل مسودة إلا بتأكيد overwrite. */
+function api_bulkApply(token, studentIds, items, overwrite) { return bulkApply_(ctx_(token), studentIds, items, overwrite === true); }
+function bulkApply_(ctx, ids, items, overwrite) {
+  if (['counselor', 'deputy', 'admin'].indexOf(ctx.role) < 0) throw new Error('لا صلاحية للتعديل.');
+  if (!ids || !ids.length) throw new Error('اختر طلاباً أولاً.');
+  if (ids.length > 60) throw new Error('الحد الأقصى 60 طالباً في المرة الواحدة.');
+  var counts = { strength: 0, improve: 0, recommend: 0 }, libTexts = {};
+  tableC_('Library', 600).forEach(function (l) { libTexts[trim_(l.text)] = true; });
+  var clean = (items || []).map(function (it, i) {
+    if (CATS.indexOf(it.category) < 0) throw new Error('فئة غير صالحة.');
+    var t = trim_(it.text);
+    if (!t) throw new Error('عبارة فارغة.');
+    if (!libTexts[t]) throw new Error('العبارات الإضافية غير متاحة؛ اختر من مكتبة العبارات.');
+    if (++counts[it.category] > MAX[it.category]) throw new Error('تجاوز الحد الأقصى للفئة.');
+    return { category: it.category, text: t, source: 'library', order: i + 1 };
+  });
+  if (!clean.length) throw new Error('اختر عبارات للتطبيق.');
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var P = period_(), byStu = {}, now = new Date();
+    table_('Reports').filter(function (r) { return repOf_(r, P); }).forEach(function (r) { byStu[r.studentId] = r; });
+    var newReps = [], newItems = [], audits = [], applied = [], skipped = [], seen = {};
+    ids.forEach(function (id) {
+      if (seen[id]) return; seen[id] = true;
+      try { studentFor_(ctx, id); } catch (e) { skipped.push({ id: id, reason: 'غير متاح' }); return; }
+      var rep = byStu[id];
+      if (rep && !EDITABLE[rep.status]) { skipped.push({ id: id, reason: 'مقفل' }); return; }
+      if (rep && !overwrite) { skipped.push({ id: id, reason: 'لديه مسودة' }); return; }
+      var rid;
+      if (rep) {
+        rid = rep.id;
+        writeItems_(rid, clean.map(function (c) { return { category: c.category, text: c.text, source: c.source, order: c.order }; }));
+        setCell_('Reports', rep._row, 'updatedAt', now);
+      } else {
+        rid = 'R-' + Utilities.getUuid().slice(0, 8);
+        newReps.push({ id: rid, studentId: id, year: YEAR, period: P, status: 'DRAFT', createdBy: ctx.username, createdAt: now, updatedAt: now });
+        clean.forEach(function (c) { newItems.push({ reportId: rid, category: c.category, text: c.text, source: c.source, order: c.order }); });
+      }
+      cput_('itm_' + rid, clean.map(function (c) { return { category: c.category, text: c.text, source: c.source }; }), 600);
+      audits.push({ ts: now, email: ctx.username, action: 'BULK_APPLY', target: rid, detail: clean.length + ' بنود (تطبيق جماعي)' });
+      applied.push(id);
+    });
+    appendObjs_('Reports', newReps);
+    appendObjs_('Items', newItems);
+    appendObjs_('Audit', audits);
+    bust_('Reports');
+    return { applied: applied, skipped: skipped, stats: stats_(ctx) };
+  } finally { lock.releaseLock(); }
+}
+
 function api_transition(token, studentId, to, reason) { return transition_(ctx_(token), studentId, to, reason); }
 
 function transition_(ctx, studentId, to, reason) {
@@ -691,6 +778,13 @@ function selfTest() {
     throws(function () { saveReport_(c, 'TEST-1', items.concat([1, 2, 3, 4, 5].map(function () { return { category: 'strength', text: 'x' }; }))); }, 'تجاوز حد النقاط مرفوض');
     var rp = table_('Reports').filter(function (r) { return r.studentId === 'TEST-1'; })[0];
     ok(!!rp && trim_(rp.period) === period_(), 'التقرير يُخزَّن بفترته (' + (rp ? trim_(rp.period) : '-') + ')');
+    var bk = bulkApply_(c, ['TEST-1', 'TEST-2', 'TEST-1'], items, false);
+    ok(bk.applied.length === 0 && bk.skipped.length === 2, 'التطبيق الجماعي: يتخطى من لديه مسودة ومن خارج صلاحيته');
+    bk = bulkApply_(c, ['TEST-1'], items.slice(0, 2), true);
+    ok(bk.applied.join() === 'TEST-1' && getReport_(c, 'TEST-1').items.length === 2, 'التطبيق الجماعي مع التأكيد يستبدل المسودة');
+    saveReport_(c, 'TEST-1', items);
+    throws(function () { bulkApply_(c, ['TEST-1'], [{ category: 'strength', text: 'خارج المكتبة' }], true); }, 'التطبيق الجماعي يرفض عبارة خارج المكتبة');
+    ok(getReports_(c, ['TEST-1']).hasOwnProperty('TEST-1') && getReports_(c, ['TEST-1'])['TEST-1'].items.length === 3, 'getReports يعيد بنود التقارير دفعة واحدة');
     throws(function () { saveReport_(c, 'TEST-1', [{ category: 'improve', text: 'نص خارج مكتبة العبارات' }]); }, 'العبارة الإضافية (خارج المكتبة) مرفوضة في v11.0');
     transition_(c, 'TEST-1', 'SUBMITTED');
     var stC = stats_(c), stD = stats_(d), stP = stats_(p);
@@ -719,7 +813,7 @@ function selfTest() {
 // الدوال المسموح استدعاؤها عن بعد (قائمة بيضاء). الوسيط الأول للمحمية دائماً token.
 var API_MAP = { api_users: api_users, api_login: api_login, api_logout: api_logout, api_me: api_me, api_students: api_students,
                 api_library: api_library, api_getReport: api_getReport, api_saveReport: api_saveReport, api_transition: api_transition,
-                api_stats: api_stats, api_audit: api_audit, api_boot: api_boot };
+                api_stats: api_stats, api_audit: api_audit, api_boot: api_boot, api_getReports: api_getReports, api_bulkApply: api_bulkApply };
 
 /**
  * يستقبل POST بنص JSON: {"fn":"api_login","args":["اسم","رمز"]} (Content-Type: text/plain لتجنّب طلب preflight)

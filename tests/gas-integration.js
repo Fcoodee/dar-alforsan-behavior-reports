@@ -26,7 +26,7 @@ global.Utilities = { getUuid: () => crypto.randomUUID(), formatDate: d => d.toIS
   computeDigest: (alg, t) => Array.from(crypto.createHash('sha256').update(t, 'utf8').digest()).map(b => b > 127 ? b - 256 : b) };
 global.Logger = { log() {} }; global.HtmlService = {};
 global.ContentService = { createTextOutput: t => ({ t, setMimeType() { return this; }, getContent() { return this.t; } }), MimeType: { JSON: 'json' } };
-eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__apiFns={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit,api_boot,doPost};');
+eval(fs.readFileSync(path.join(root, 'apps-script', 'Code.gs'), 'utf8') + '\n;global.__apiFns={checkSetup,setup,selfTest,api_users,api_login,api_logout,api_me,api_students,api_library,api_getReport,api_saveReport,api_transition,api_stats,api_audit,api_boot,api_getReports,api_bulkApply,doPost};');
 global.__api = global.__apiFns;
 global.__doPost = body => __apiFns.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).getContent();
 __api.setup();
@@ -152,7 +152,9 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
     const body = req.postData(); const res = __doPost(body);
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: res });
   });
-  const pageUrl = 'file://' + path.join(root, 'index.html');
+  const http = require('http');
+  const srv = http.createServer((q, res) => { const f = path.join(root, decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/, '/index.html')); fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); } else { res.writeHead(200, { 'Content-Type': f.endsWith('.png') ? 'image/png' : f.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8' }); res.end(d); } }); }).listen(0);
+  const pageUrl = 'http://127.0.0.1:' + srv.address().port + '/index.html';
   const plogin = async (user, pin) => { await pp.goto(pageUrl); await pp.evaluate(() => sessionStorage.clear()); await pp.reload(); await pp.waitForSelector('#gu'); await pp.selectOption('#gu', user); if (await pp.isVisible('#gp')) await pp.fill('#gp', pin); await pp.click('#lf button'); await pp.waitForTimeout(800); };
   await pp.goto(pageUrl); await pp.waitForSelector('#gu');
   ok(JSON.stringify(await pp.$$eval('#gu option', e => e.map(x => x.textContent))).includes('وكيل الابتدائي'), 'Pages: قائمة المستخدمين تُقرأ من ورقة Staff عبر doPost');
@@ -193,8 +195,32 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   await pp.click('#logout'); await pp.waitForSelector('#gu');
   await plogin('وكيل الابتدائي', ''); await pp.waitForSelector('.hero');
   ok((await pp.textContent('.hero .pl.act b')) === '1', 'Pages: شارة الوكيل تعكس حالة القاعدة (بانتظارك 1)');
+  // ───── الإجراءات الجماعية: تطبيق موحّد + تصدير PDF لكل طالب (وكيل الابتدائي على Pages) ─────
+  const repsBefore = data.Reports.length, itemsBefore = data.Items.length;
+  await pp.click('#bulk'); await pp.waitForSelector('#bulkDlg[open]');
+  await pp.click('#bsall');
+  const expected = await pp.evaluate(() => S.students.filter(s => s.class === S.bulk.cls && s.status === 'NONE').length);
+  await pp.click('input[data-bt=strength] >> nth=0'); await pp.click('input[data-bt=improve] >> nth=0'); await pp.click('input[data-bt=recommend] >> nth=0');
+  await pp.click('#bapply');
+  ok(await pp.isVisible('#bgo'), 'التطبيق الجماعي: يطلب تأكيداً صريحاً قبل التنفيذ');
+  await pp.click('#bgo'); await pp.waitForFunction(() => /طُبّقت/.test(document.querySelector('#bmsg').textContent), null, { timeout: 20000 });
+  ok(expected > 1 && data.Reports.length === repsBefore + expected && data.Items.length === itemsBefore + 3 * expected, 'التطبيق الجماعي: كُتبت مسودة وثلاثة بنود لكل طالب دفعة واحدة (' + expected + ' طلاب)');
+  ok((await pp.textContent('#bmsg')).includes('تخطّى'), 'التطبيق الجماعي: تُخطّى المرسَل/المعتمد ولا يُمَسّ');
+  ok(data.Audit.filter(r => r.includes('BULK_APPLY')).length === expected, 'سجل التدقيق: سطر BULK_APPLY لكل طالب');
+  const exp = await pp.evaluate(async () => {
+    const j = await Exp.toJpeg(sheetHtml('طالب', [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }], 'الثالث الابتدائي أ', 'الأهلي'));
+    const pdf = Exp.pdf(j), z = Exp.zip([{ name: 'AHL-P-0001.pdf', data: pdf }, { name: 'AHL-P-0002.pdf', data: pdf }]);
+    const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(s); };
+    return { jpg: j.bytes.length, pdfHead: String.fromCharCode(...pdf.subarray(0, 8)), pdfTail: String.fromCharCode(...pdf.subarray(pdf.length - 6)), pdf64: b64(pdf), zip64: b64(z) };
+  });
+  fs.writeFileSync(path.join(require('os').tmpdir(), 'dfa-export.zip'), Buffer.from(exp.zip64, 'base64'));
+  fs.writeFileSync(path.join(require('os').tmpdir(), 'dfa-export.pdf'), Buffer.from(exp.pdf64, 'base64'));
+  ok(exp.jpg > 40000 && exp.pdfHead === '%PDF-1.4' && exp.pdfTail.includes('%%EOF'), 'التصدير: صورة التقرير غير فارغة (' + exp.jpg + 'B) وملف PDF سليم الهيكل');
+  const runR = await pp.evaluate(async () => { const ids = S.students.filter(s => ['APPROVED', 'PUBLISHED'].includes(s.status)).map(s => s.id); const r = await Exp.run(ids.concat(['AHL-P-9999']), null, false); return { n: ids.length, count: r.count, skipped: r.skipped, name: r.name, size: r.blob.size }; });
+  ok(runR.n >= 1 && runR.count === runR.n && runR.skipped === 1 && /\.pdf$|\.zip$/.test(runR.name), 'التصدير الجماعي: يشمل المعتمد/المنشور فقط ويتخطّى غيره (' + JSON.stringify(runR) + ')');
   ok(perrs.filter(e => !/ERR_TUNNEL|fonts/.test(e)).length === 0, 'Pages: لا أخطاء JavaScript ' + JSON.stringify(perrs));
   await pctx.close();
+  srv.close();
   ok(errs.filter(e => !/ERR_TUNNEL|fonts/.test(e)).length === 0, 'لا أخطاء JavaScript ' + JSON.stringify(errs));
   console.log(out.join('\n')); await b.close(); process.exit(out.some(x => x.startsWith('فشل')) ? 1 : 0);
 })().catch(e => { console.log(out.join('\n')); console.log('ERR', e.message); process.exit(1); });

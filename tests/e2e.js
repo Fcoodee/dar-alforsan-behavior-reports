@@ -105,6 +105,13 @@ async function dd(b,url,tag){
  const guard=async(want)=>p.evaluate(()=>{const el=document.querySelector('.sheet');const mk=t=>{const e=new Event(t,{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented;};const k=new KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true,cancelable:true});el.dispatchEvent(k);return{us:getComputedStyle(el).userSelect,copy:mk('copy'),ctx:mk('contextmenu'),sel:mk('selectstart'),key:k.defaultPrevented};});
  let g=await guard();ok(g.us==='none'&&g.copy&&g.ctx&&g.sel&&g.key,tag+' غير المدير: التحديد والنسخ وقائمة الزر الأيمن واختصار Ctrl+C كلها ممنوعة '+JSON.stringify(g));
  ok(await p.$('.ub')===null&&await p.$('#reset')===null&&await p.$('#audit')===null,tag+' الموجه لا يرى أدوات المدير/المهندس');
+ // إجراءات جماعية (وضع التجربة)
+ await p.click('#bulk');await p.waitForSelector('#bulkDlg[open]');await p.click('#bsall');
+ await p.click('input[data-bt=strength] >> nth=0');await p.click('input[data-bt=improve] >> nth=0');await p.click('input[data-bt=recommend] >> nth=0');
+ await p.click('#bapply');ok(await p.isVisible('#bgo'),tag+' التطبيق الجماعي يطلب تأكيداً');await p.click('#bgo');
+ await p.waitForFunction(()=>/طُبّقت/.test(document.querySelector('#bmsg').textContent),null,{timeout:10000});
+ ok((await p.evaluate(()=>S.students.filter(s=>s.class===S.bulk.cls&&s.status==='DRAFT').length))>1,tag+' التطبيق الجماعي أنشأ مسودات لعدة طلاب');
+ await p.keyboard.press('Escape');
  // إرسال تقرير من الابتدائي
  await p.click('#logout');await p.waitForSelector('#lf');
  await pick_(p,'counselor','primary');

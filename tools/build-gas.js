@@ -22,7 +22,7 @@ fs.readdirSync(path.join(root, 'assets')).filter(f => f.endsWith('.png')).forEac
   imgs['assets/' + f] = embed ? 'data:image/png;base64,' + fs.readFileSync(path.join(root, 'assets', f)).toString('base64') : BASE + 'assets/' + f;
 });
 const shim = '<script>window.DEMO={year:"1448-1449"};(function(){var M=' + JSON.stringify(imgs) +
-  ';function fix(n){if(n.nodeType!==1)return;if(n.tagName==="IMG"){var s=n.getAttribute("src");if(M[s])n.setAttribute("src",M[s]);}' +
+  ';window.__ASSETS=M;function fix(n){if(n.nodeType!==1)return;if(n.tagName==="IMG"){var s=n.getAttribute("src");if(M[s])n.setAttribute("src",M[s]);}' +
   'var l=n.querySelectorAll?n.querySelectorAll("img"):[];for(var i=0;i<l.length;i++)fix(l[i]);}' +
   'new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(fix);});}).observe(document.documentElement,{childList:true,subtree:true});})();</script>';
 src = src.replace(tags, shim);
