@@ -77,10 +77,14 @@ async function dd(b,url,tag){
  const ctx=await b.newContext({viewport:{width:1440,height:1100}});const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.goto(url);await p.waitForSelector('#lf');
  ok(await p.$('#lu')===null&&await p.$('#lp')===null,tag+' لا حقول اسم مستخدم/كلمة مرور في وضع القائمة');
- const nt=await p.textContent('.notice');
- ok(nt.includes('اكتملت التهيئة لجميع الأقسام')&&nt.includes('القسم الأهلي')&&nt.includes('قسم الدبلوما')&&nt.includes('قسم التربية الخاصة')&&nt.includes('08-11-2026'),tag+' مربع الإعلام: التهيئة والأقسام الثلاثة وتاريخ البدء');
- ok(nt.includes('09-11-2026')&&nt.includes('تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )')&&nt.includes('اكتملت التهيئة'),tag+' آخر تحديث: تهيئة قاعدة بيانات القسم الأهلي بتاريخ 09-11-2026');
- ok((await p.$eval('.notice .ind',e=>e.getAttribute('aria-valuenow')))==='100'&&(await p.$eval('.notice .ind i',e=>getComputedStyle(e).animationName))==='none',tag+' شريط التهيئة مكتمل وثابت (100%)');
+ const nt=await p.textContent('#ticker');
+ ok(nt.includes('آخر التحديثات')&&nt.includes('12-11-2026')&&nt.includes('إطلاق النسخة v11.0')&&nt.includes('08-11-2026')&&nt.includes('اكتملت التهيئة لجميع الأقسام'),tag+' شريط التحديثات: التاريخ والتحديث تباعاً من 12-11 إلى 08-11');
+ const tk=async()=>p.evaluate(()=>{const e=document.getElementById('ticker'),t=document.getElementById('tkt');return{top:Math.round(e.getBoundingClientRect().top),x:t.getBoundingClientRect().left,anim:getComputedStyle(t).animationName,state:getComputedStyle(t).animationPlayState,dur:getComputedStyle(t).animationDuration,h:Math.round(e.getBoundingClientRect().height)};});
+ let k1=await tk();await p.waitForTimeout(500);let k2=await tk();
+ ok(k1.top<=1&&k1.h<=60&&k1.anim==='tkmove'&&k1.state==='running'&&k1.x!==k2.x,tag+' شريط التحديثات أعلى الصفحة ومتحرك بلا توقف ('+Math.round(k1.x)+'→'+Math.round(k2.x)+'، المدة '+k1.dur+')');
+ await p.click('#tkb');await p.waitForTimeout(150);k1=await tk();await p.waitForTimeout(300);k2=await tk();
+ ok(k1.state==='paused'&&k1.x===k2.x&&(await p.getAttribute('#tkb','aria-pressed'))==='true',tag+' زر الإيقاف المؤقت يوقف الشريط (إتاحة الوصول)');
+ await p.click('#tkb');k1=await tk();ok(k1.state==='running',tag+' زر التشغيل يعيد حركة الشريط');
  const bar=async()=>p.$eval('#clk',e=>{const r=e.getBoundingClientRect();return{pos:getComputedStyle(e).position,vis:r.bottom<=innerHeight+1&&r.top>0,txt:e.textContent};});
  let cb=await bar();ok(cb.pos==='fixed'&&cb.vis&&/جمادى|ربيع|محرم|صفر|رجب|شعبان|رمضان|شوال|ذو/.test(cb.txt)&&/\d{4}/.test(cb.txt)&&/[:٠-٩\d]+:\d\d/.test(cb.txt),tag+' شريط التاريخ والوقت ثابت في صفحة الدخول: '+cb.txt.slice(0,60));
  const opts=await p.$$eval('#lr option',e=>e.map(x=>x.textContent));

@@ -81,7 +81,7 @@ const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجم
   ok(!(await p.isVisible('#gp')), 'الموجه: حقل الرمز مخفي');
   await p.selectOption('#gu', 'مدير النظام');
   ok(await p.isVisible('#gp'), 'مدير النظام: حقل الرمز ظاهر');
-  ok((await p.textContent('.notice')).includes('تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح'), 'شاشة الدخول: سجل التحديثات يتضمن إدخال اليوم');
+  ok((await p.textContent('#ticker')).includes('تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح') && (await p.evaluate(() => getComputedStyle(document.getElementById('tkt')).animationName)) === 'tkmove', 'شريط التحديثات في بيئة Apps Script: يتضمن التحديثات ومتحرك');
   await p.selectOption('#gu', 'مدير المدرسة');
   for (let i = 0; i < 5; i++) { await p.fill('#gp', 'x' + i); await p.click('#lf button'); await p.waitForTimeout(250); }
   await p.fill('#gp', '4444'); await p.click('#lf button'); await p.waitForTimeout(400);

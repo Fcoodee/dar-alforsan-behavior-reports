@@ -144,15 +144,22 @@ html.nc input,html.nc textarea,html.nc select{-webkit-user-select:text;user-sele
 .clkbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#14577a;color:#fff;display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center;align-items:center;padding:6px 12px;padding-bottom:calc(6px + env(safe-area-inset-bottom));font-size:13px;box-shadow:0 -2px 8px rgba(0,0,0,.2)}
 .clkbar span{white-space:nowrap}.clkbar span:last-child{font-weight:800}
 body{padding-bottom:52px}
-.notice{flex:1 1 100%;background:#fff7e6;border:1px solid #e3cf9a;border-right:6px solid #d99a1e;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
-.nt-top{display:flex;gap:12px;align-items:center}
-.nt-ic{color:#5c4306;display:flex;animation:ntpulse 1.6s ease-in-out infinite}
-.nt-h{font-weight:800;font-size:16px;color:#5c4306}.nt-s{font-size:13px;color:#6b5a2a}
 .ind{position:relative;height:10px;border-radius:5px;background:#f0e1b8;overflow:hidden}
 .ind i{position:absolute;top:0;bottom:0;left:-35%;width:35%;border-radius:5px;background:#d99a1e;animation:ntind 1.3s linear infinite}
 @keyframes ntind{0%{left:-35%}100%{left:100%}}
-.ind.done i{left:0;width:100%;animation:none;background:#2e7d4f}
-@keyframes ntpulse{0%,100%{opacity:1}50%{opacity:.4}}
+#ticker{position:relative;z-index:40;background:#14577a;color:#fff;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;overflow:hidden;font-size:14px;direction:rtl;border-bottom:3px solid #7cc4e4}
+#ticker .tk-l{flex:0 0 auto;background:#fff;color:#14577a;font-weight:800;border-radius:999px;padding:3px 12px;font-size:13px;white-space:nowrap}
+#ticker .tk-v{flex:1 1 auto;min-width:0;overflow:hidden;direction:ltr;-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+#ticker .tk-t{display:inline-flex;width:max-content;animation:tkmove var(--d,60s) linear infinite;will-change:transform}
+#ticker .tk-t>div{display:inline-flex;align-items:center;white-space:nowrap;direction:rtl}
+#ticker .tk-i{display:inline-flex;align-items:center;gap:8px;padding:0 6px}
+#ticker .tk-s{font-size:9px;opacity:.7;padding:0 14px}
+#ticker .tk-d{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:1px 10px;font-weight:700;font-size:12.5px}
+#ticker .tk-b{flex:0 0 auto;min-width:44px;min-height:40px;border:1px solid rgba(255,255,255,.55);border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:16px;cursor:pointer}
+@keyframes tkmove{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+#ticker .tk-v:hover .tk-t,#ticker.pz .tk-t{animation-play-state:paused}
+@media (max-width:767px){#ticker{font-size:13px;gap:6px}#ticker .tk-l{font-size:12px;padding:3px 9px}}
+@media print{#ticker{display:none!important}}
 .nt-d{display:flex;flex-wrap:wrap;gap:8px}.nt-d span{background:#fff;border:1px solid #e3cf9a;border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px;color:#5c4306}
 .nt-date{font-size:13.5px;color:#5c4306}
 .nt-d span.ok{background:#dcecdc;border-color:#b9d3bf;color:#1d4a2c}
@@ -171,7 +178,7 @@ body{padding-bottom:52px}
 .dl{display:flex;flex-direction:column;align-items:center;gap:4px;width:30%;min-width:92px;max-width:150px;padding:8px 6px;border:2px solid #d3dde5;border-radius:10px;background:#fff;cursor:pointer;font:inherit;font-weight:700;font-size:12px;color:#14425f;min-height:44px}
 .dl img{width:100%;height:72px;object-fit:contain}
 .dl[aria-pressed=true]{border-color:#14577a;background:#eaf3f9}
-@media (prefers-reduced-motion:reduce){.ind i{animation-duration:3.2s}.nt-ic{animation:none}}
+@media (prefers-reduced-motion:reduce){.ind i{animation-duration:3.2s}}
 @media (max-width:767px){.clkbar{font-size:12px;gap:2px 10px}body{padding-bottom:64px}}
 @media print{.clkbar{display:none!important}}
 
@@ -209,6 +216,7 @@ body{padding-bottom:52px}
 </style>
 </head>
 <body>
+<div id="ticker"></div>
 <div id="app"></div>
 <div id="printArea" aria-hidden="true"></div>
 <dialog id="zoomDlg"><div id="zoomBody" style="overflow:auto;max-height:82vh;max-width:100%;-webkit-overflow-scrolling:touch"></div><form method="dialog" style="margin-top:12px"><button class="btn">إغلاق</button></form></dialog>
@@ -405,9 +413,32 @@ const Auth=(()=>{
  return{load,login,loginAs,session,logout};
 })();
 const todayStr=()=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Riyadh',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date()).replace(/\//g,'-');
-function noticeHtml(){return '<div class="notice" role="status" aria-live="polite"><div class="nt-top"><span class="nt-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><div><div class="nt-h">اكتملت التهيئة لجميع الأقسام</div><div class="nt-s">جميع الأقسام والمراحل تعمل</div></div></div><div class="ind done" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="اكتملت التهيئة"><i></i></div><div class="nt-d"><span class="ok">القسم الأهلي — اكتملت التهيئة</span><span class="ok">قسم الدبلوما — اكتملت التهيئة</span><span class="ok">قسم التربية الخاصة — اكتملت التهيئة</span></div><div class="nt-log"><div class="nt-lh">آخر التحديثات</div><div class="nt-li"><b dir="ltr">12-11-2026</b><span>إطلاق النسخة v11.0</span></div><div class="nt-li"><b dir="ltr">12-11-2026</b><span>إمكانية تصدير مجموعة تقارير لمجموعة من الطلاب بنفس الاختيارات</span></div><div class="nt-li"><b dir="ltr">11-11-2026</b><span>اعتماد عنوان التقرير للفترة الأولى بمسمى «تقرير الفترة الأولى - الفصل الدراسي الأول بتاريخ: 9 جمادى الآخرة 1448 هـ الموافق 19 نوفمبر 2026م»</span></div><div class="nt-li"><b dir="ltr">11-11-2026</b><span>تم إطلاق نموذج تجريبي تحت الاختبار والتجربة</span></div><div class="nt-li"><b dir="ltr">11-11-2026</b><span>اكتملت التهيئة لجميع الأقسام</span></div><div class="nt-li"><b dir="ltr">10-11-2026</b><span>جاري تهيئة قاعدة بيانات الأقسام ( الدبلوما - التربية الخاصة )</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح</span></div><div class="nt-li"><b dir="ltr">09-11-2026</b><span>تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )</span></div><div class="nt-li"><b dir="ltr">08-11-2026</b><span>بدأ العمل على تهيئة قواعد بيانات الأقسام: الأهلي · الدبلوما · التربية الخاصة</span></div></div></div>';}
+const UPDATES=[ // [التاريخ، التحديث] — الأحدث أولاً
+ ["12-11-2026","إطلاق النسخة v11.0"],
+ ["12-11-2026","إمكانية تصدير مجموعة تقارير لمجموعة من الطلاب بنفس الاختيارات"],
+ ["11-11-2026","اعتماد عنوان التقرير للفترة الأولى بمسمى «تقرير الفترة الأولى - الفصل الدراسي الأول بتاريخ: 9 جمادى الآخرة 1448 هـ الموافق 19 نوفمبر 2026م»"],
+ ["11-11-2026","تم إطلاق نموذج تجريبي تحت الاختبار والتجربة"],
+ ["11-11-2026","اكتملت التهيئة لجميع الأقسام"],
+ ["10-11-2026","جاري تهيئة قاعدة بيانات الأقسام ( الدبلوما - التربية الخاصة )"],
+ ["09-11-2026","تم اختبار اتصال قاعدة بيانات القسم الأهلي لجميع المراحل بنجاح"],
+ ["09-11-2026","تمت تهيئة قاعدة بيانات طلاب القسم الأهلي ( ابتدائي - متوسط - ثانوي )"],
+ ["08-11-2026","بدأ العمل على تهيئة قواعد بيانات الأقسام: الأهلي · الدبلوما · التربية الخاصة"]];
+function tickerHtml(){
+ const items=UPDATES.map(u=>'<span class="tk-i"><b class="tk-d" dir="ltr">'+esc(u[0])+'</b><span>'+esc(u[1])+'</span></span>').join('<span class="tk-s" aria-hidden="true">●</span>');
+ return '<span class="tk-l">آخر التحديثات</span><div class="tk-v"><div class="tk-t" id="tkt"><div>'+items+'<span class="tk-s" aria-hidden="true">●</span></div><div aria-hidden="true">'+items+'<span class="tk-s">●</span></div></div></div>'+
+  '<button type="button" class="tk-b" id="tkb" aria-pressed="false" aria-label="إيقاف شريط التحديثات مؤقتاً" title="إيقاف / تشغيل">⏸</button>';
+}
+function initTicker(){
+ const el=document.getElementById('ticker');if(!el)return;
+ el.setAttribute('role','region');el.setAttribute('aria-label','شريط التحديثات');el.innerHTML=tickerHtml();
+ const t=document.getElementById('tkt'),b=document.getElementById('tkb');
+ const speed=()=>{try{const w=t.firstElementChild.getBoundingClientRect().width;t.style.setProperty('--d',Math.max(20,w/70)+'s');}catch(e){}}; // سرعة ثابتة ≈ 70 بكسل/ث
+ speed();try{if(document.fonts&&document.fonts.ready)document.fonts.ready.then(speed);}catch(e){}
+ const set=on=>{el.classList.toggle('pz',on);b.setAttribute('aria-pressed',String(on));b.textContent=on?'▶':'⏸';b.setAttribute('aria-label',on?'تشغيل شريط التحديثات':'إيقاف شريط التحديثات مؤقتاً');};
+ b.onclick=()=>set(!el.classList.contains('pz'));
+ try{if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)set(true);}catch(e){} // احتراماً لمن يفضّل تقليل الحركة: يبدأ متوقفاً ويمكنه تشغيله
+}
 function showLogin(msg){
- const NOTICE=noticeHtml();
  const role=(t,d,c)=>'<div class="rl"><span class="rt" style="background:'+c[0]+';color:'+c[1]+'">'+t+'</span><span>'+d+'</span></div>';
  const IN="width:100%;min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 12px;font-weight:400;background:#fff";
  const dropForm='<form id="lf" class="lg-form"><h2 style="margin:0;font-size:17px">تسجيل الدخول</h2>'+
@@ -421,7 +452,7 @@ function showLogin(msg){
   '<label style="font-weight:700">اسم المستخدم<input id="lu" autocomplete="username" required style="'+IN+'"></label>'+
   '<label style="font-weight:700">كلمة المرور<input id="lp" type="password" autocomplete="current-password" required style="'+IN+'"></label>'+
   '<button class="btn pri" type="submit">دخول</button><div id="lerr" role="alert" style="color:#a02020;font-weight:700;min-height:22px">'+esc(msg||'')+'</div></form>';
- $('#app').innerHTML='<div class="card lg">'+NOTICE+'<div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
+ $('#app').innerHTML='<div class="card lg"><div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
   '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب القسم الأهلي (الابتدائي والمتوسط والثانوي) ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+
   '<div class="lg-h">المستخدمون ومهامهم</div>'+
   role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
@@ -485,7 +516,7 @@ async function showGasLogin(msg){
  const deptRoles=d=>{const base=DEPTS.find(x=>x.k===d).roles.concat(users.filter(u=>u.dept===d&&!DEPTS.some(x=>x.roles.includes(u.username))&&!SHARED_ROLES.includes(u.username)).map(u=>u.username));
   return base.concat(SHARED_ROLES);};
  const logos='<div class="dlogos" role="group" aria-label="أقسام المدرسة">'+DEPTS.map(d=>'<button type="button" class="dl" data-d="'+d.k+'" aria-pressed="false" aria-label="'+d.n+'" title="'+d.n+'"><img src="'+d.logo+'" alt="شعار '+d.n+'"></button>').join('')+'</div>';
- $('#app').innerHTML='<div class="card lg">'+noticeHtml()+'<div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
+ $('#app').innerHTML='<div class="card lg"><div class="lg-info"><div class="row" style="gap:12px;flex-wrap:nowrap"><img src="assets/logo.png" alt="شعار مدارس دار الفرسان الأهلية" style="width:92px;height:76px;object-fit:contain"><div><h1 style="font-size:20px">تقارير الأداء السلوكي والأكاديمي</h1><div class="sub">مدارس دار الفرسان الأهلية · العام الدراسي '+esc(DEMO.year)+'هـ</div></div></div>'+
   '<p class="lg-p">لوحة لإعداد تقارير الأداء السلوكي والأكاديمي لطلاب أقسام المدرسة (الأهلي · الدبلوما · التربية الخاصة) ومتابعتها: تُدوَّن الملاحظات، وتُراجَع وتُعتمد، ثم يصدر التقرير بصيغة PDF لوليّ الأمر.</p>'+logos+
   '<div class="lg-h">المستخدمون ومهامهم</div>'+
   role('الموجه الطلابي','يدوّن النقاط الإيجابية ونقاط التحسين والتوصيات لطلاب مرحلته أو قسمه ويرسل التقرير للوكيل.',['#dcecdc','#1d4a2c'])+
@@ -797,6 +828,7 @@ async function doPrint(){
  pa.innerHTML=html;
  setTimeout(()=>{try{window.print();}catch(e){say('الطباعة غير متاحة هنا.','err');}},150);
 }
+initTicker();
 boot().catch(e=>{document.body.insertAdjacentHTML('afterbegin','<p style="padding:16px;color:#a02020">خطأ في التشغيل: '+esc(e.message)+'</p>');});
 </script>
 </body>
