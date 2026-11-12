@@ -164,6 +164,7 @@ body{padding-bottom:52px}
 .busy{position:fixed;inset:0;z-index:100;background:rgba(20,40,55,.45);display:none;align-items:center;justify-content:center;padding:16px}
 .busy.on{display:flex}
 .busy .bx{background:#fff;border-radius:12px;padding:22px 24px;width:min(420px,100%);box-shadow:0 10px 40px rgba(0,0,0,.3);text-align:center;font-weight:700;color:#14425f}
+.busy .tm{margin-top:10px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:#14577a;letter-spacing:.5px}
 .busy .ind{margin-top:14px;background:#d6e6f4}.busy .ind i{background:#14577a}
 @media print{.busy{display:none!important}}
 .dlogos{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
@@ -293,12 +294,13 @@ const remoteCall=async(fn,...a)=>{
  let j;try{j=await r.json();}catch(e){throw new Error('استجابة غير صالحة من الخادم.');}
  if(!j.ok)throw new Error(j.error||'خطأ في الخادم.');return j.value;};
 const gasCall=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
-const Busy=(()=>{let n=0,t=null,since=0,el=null;
+const Busy=(()=>{let n=0,t=null,since=0,el=null,t0=0,iv=null;
  const mk=()=>{if(el)return el;el=document.createElement('div');el.className='busy';el.setAttribute('role','alertdialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','فضلا الانتظار');
-  el.innerHTML='<div class="bx"><div>فضلا الانتظار .. جاري العمل على قاعدة البيانات ..</div><div class="ind" role="progressbar" aria-busy="true"><i></i></div></div>';document.body.appendChild(el);return el;};
- const show=()=>{since=Date.now();mk().classList.add('on');document.body.setAttribute('aria-busy','true');};
- const hide=()=>{if(el)el.classList.remove('on');document.body.removeAttribute('aria-busy');};
- const start=()=>{if(++n===1)t=setTimeout(show,150);};
+  el.innerHTML='<div class="bx"><div>فضلا الانتظار .. جاري العمل على قاعدة البيانات ..</div><div class="ind" role="progressbar" aria-busy="true"><i></i></div><div class="tm" role="timer" dir="ltr" aria-label="زمن الانتظار بالثواني">0.00 ث</div></div>';document.body.appendChild(el);return el;};
+ const tick=()=>{const m=el&&el.querySelector('.tm');if(m)m.textContent=((performance.now()-t0)/1000).toFixed(2)+' ث';};
+ const show=()=>{since=Date.now();mk().classList.add('on');tick();clearInterval(iv);iv=setInterval(tick,50);document.body.setAttribute('aria-busy','true');};
+ const hide=()=>{clearInterval(iv);if(el)el.classList.remove('on');document.body.removeAttribute('aria-busy');};
+ const start=()=>{if(++n===1){t0=performance.now();t=setTimeout(show,150);}};
  const end=()=>{if(--n>0)return;n=0;clearTimeout(t);if(el&&el.classList.contains('on')){setTimeout(()=>{if(n===0)hide();},Math.max(0,400-(Date.now()-since)));}};
  return{run:async f=>{start();try{return await f();}finally{end();}},active:()=>n>0};})();
 const mkBackend=call0=>{const call=(fn,...a)=>Busy.run(()=>call0(fn,...a)); // الدخول بحساب دور + رمز، وجلسة token (داخل Apps Script أو عن بعد من GitHub Pages)
@@ -556,6 +558,7 @@ async function go(to){
 /* التقرير */
 const langOf=l=>l.lang||(/[\u0600-\u06FF]/.test(l.text)?'ar':'en'); // يعمل حتى مع خادم قديم لا يعيد lang
 const isEnDept=d=>/diploma|دبلوما/i.test(d||'');
+const deptColor=d=>/diploma|دبلوما/i.test(d||'')?'#6E289B':/special|خاصة/i.test(d||'')?'#0095C7':'#308DB8'; // ألوان شعارات الأقسام: الدبلوما بنفسجي · التربية الخاصة أزرق سماوي · الأهلي أزرق
 const deptLogo=d=>/diploma|دبلوما/i.test(d||'')?'assets/logo_diploma.png':/special|خاصة/i.test(d||'')?'assets/logo_special.png':'';
 const T_AR={g1:'شريكنا ولي أمر الطالب/ ',g2:'السلام عليكم ورحمة الله وبركاته،،،',
  p1:'يسعدنا أن نتوجه إليكم بخالص الشكر على تعاونكم الدائم معنا في دعم مسيرة ابننا، ومن خلال مرافقتنا له طوال هذه الفترة وملاحظة أدائه الأكاديمي والسلوكي في مختلف المواقف التعليمية والتربوية، فقد أسعدتنا الكثير من الجوانب الإيجابية ونقاط القوة الرائعة التي يتميز بها. وفي المقابل، رصدنا بعض الجوانب التي نتطلع إلى التعاون معكم لمنحها مزيداً من الرعاية والتوجيه. ونحن في ذلك نراعي دائماً طبيعة مرحلته العمرية وخصائصها النمائية، بهدف تعزيز تميزه ودعم كل فرصة تسهم في نموه وتطوره المستمر.',
@@ -596,7 +599,7 @@ function sheetHtml(name,items,cls,dept){
  let rows='';for(let i=0;i<n;i++)rows+='<div class="gr"><div class="td">'+esc(a[i]||'')+'</div><div class="td">'+esc(b[i]||'')+'</div></div>';
  return '<div class="sheet'+(en?' en':'')+'" dir="'+(en?'ltr':'rtl')+'"><img class="bg" src="assets/bg.png" alt="">'+(lg?'<img class="dlogo" src="'+lg+'" alt="">':'')+'<div class="wmbox" aria-hidden="true"><img src="assets/wm.png" alt=""></div><div class="body">'+
  '<h2>'+esc(en?PERIOD_EN[curPeriod().code]||'Period Report':'تقرير '+curPeriod().label+' - '+curPeriod().semester)+'<span class="dt">'+esc((en?'Date: ':'بتاريخ: ')+issueDate(en))+'</span></h2>'+
- '<div><div class="g1">'+esc(T.g1)+esc(name)+(cls?' <span class="gcl">( '+L(cls)+' )</span>':'')+'</div><div class="g2">'+esc(T.g2)+'</div></div>'+
+ '<div><div class="g1">'+esc(T.g1)+'<span class="nm" style="color:'+deptColor(dept)+'">'+esc(name)+'</span>'+(cls?' <span class="gcl" style="color:'+deptColor(dept)+'">( '+L(cls)+' )</span>':'')+'</div><div class="g2">'+esc(T.g2)+'</div></div>'+
  '<p>'+esc(T.p1)+'</p>'+
  '<div class="box"><div class="gr"><div class="th" style="background:#dcecdc;color:#1d4a2c;'+sep+':1px solid #9fb0bd">'+esc(T.s)+'</div><div class="th" style="background:#fbecc8;color:#5c4306">'+esc(T.i)+'</div></div>'+rows+'</div>'+
  '<div class="box"><div class="th" style="background:#d6e6f4;color:#123a5c">'+esc(T.r)+'</div>'+(r.length?r:['']).map(x=>'<div class="tr1">'+esc(x)+'</div>').join('')+'</div>'+

@@ -103,6 +103,7 @@ const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجم
   ok((await p.textContent('#ver')).includes('v11.0'), 'رقم الإصدار v11.0 ظاهر في الشريط السفلي');
   const cust = await p.evaluate(async () => { try { await B.saveReport(S.cur, [{ category: 'strength', text: 'عبارة من خارج المكتبة' }]); return 'accepted'; } catch (e) { return e.message; } });
   ok(cust.includes('غير متاحة'), 'الخادم يرفض أي عبارة خارج المكتبة: ' + cust);
+  ok(shAr.includes('color:#308DB8') && shEn.includes('color:#6E289B') && shSp.includes('color:#0095C7'), 'لون اسم الطالب وفصله بلون شعار القسم (الأهلي/الدبلوما/التربية الخاصة)');
   ok(shSp.includes('logo_special.png') && shSp.includes('شريكنا'), 'تقرير التربية الخاصة: عربي مع شعار القسم بجانب شعار المدرسة');
   ok((await p.textContent('.hero')).includes('موجه الابتدائي'), 'الموجه يدخل بحساب الدور ورمزه');
   const cls = await p.$$eval('[data-cls]', e => e.map(x => x.textContent));
@@ -176,6 +177,8 @@ const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجم
     await pp.click('[data-stu] >> nth=1').catch(() => {});
     await pp.waitForTimeout(500);
     ok(await pp.isVisible('.busy.on') && (await pp.textContent('.busy')).includes('فضلا الانتظار .. جاري العمل على قاعدة البيانات ..'), 'Pages: مربع الانتظار يظهر عند جلب بيانات طالب');
+  const tm1 = parseFloat(await pp.textContent('.busy .tm')); await pp.waitForTimeout(400); const tm2 = parseFloat(await pp.textContent('.busy .tm'));
+  ok(tm1 > 0.3 && tm2 - tm1 > 0.25 && /^\d+\.\d\d ث$/.test((await pp.textContent('.busy .tm')).trim()), 'عدّاد الانتظار: ثوانٍ وجزء من الثانية يتزايد (' + tm1 + ' → ' + tm2 + ')');
     await pp.waitForTimeout(1800);
     ok(!(await pp.isVisible('.busy.on')), 'Pages: مربع الانتظار يختفي بعد انتهاء العملية');
   } else ok(false, 'لا توجد أزرار طلاب لاختبار مربع الانتظار');
