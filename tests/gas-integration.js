@@ -42,7 +42,7 @@ const chk = __api.checkSetup();
 ok(!chk.some(l => l.startsWith('راجع')), 'checkSetup: لا بنود «راجع» على بيانات سليمة');
 ok(chk.some(l => l.startsWith('تنبيه')), 'checkSetup: ينبّه إلى مرحلة بلا موجه/وكيل أو رمز صريح');
 ok(!chk.join(' ').includes('1111'), 'checkSetup لا يطبع الرموز');
-const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(l => l.startsWith('فشل')), 'selfTest على Code.gs: بلا فشل ' + (Array.isArray(st) ? st.filter(l => l.startsWith('فشل')).join(' | ') : typeof st));
+const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجماعي مع التأكيد')) && st.some(l => l.includes('getReports')) && st.some(l => l.includes('api_boot')), 'selfTest: نُفّذت فحوص التطبيق الجماعي وgetReports وapi_boot كلها (' + st.length + ' سطراً)'); ok(Array.isArray(st) && st.length > 20 && !st.some(l => /^(فشل|خطأ)/.test(l)), 'selfTest على Code.gs: بلا فشل ' + (Array.isArray(st) ? st.filter(l => /^(فشل|خطأ)/.test(l)).join(' | ') : typeof st));
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -112,7 +112,8 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   await p.evaluate(async () => { await pick(S.students[0].id); await toggle('strength', S.lib.find(l => l.category === 'strength').text); await toggle('improve', S.lib.find(l => l.category === 'improve').text); await toggle('recommend', S.lib.find(l => l.category === 'recommend').text); });
   await p.click('[data-go=SUBMITTED]'); await p.waitForTimeout(500);
   ok((await p.textContent('.badge.b-SUBMITTED')) === 'بانتظار الوكيل', 'الموجه يرسل التقرير فيُحفظ في ورقة Reports');
-  ok(data.Reports.length === 2 && data.Items.length === 4, 'كُتب صف في Reports وثلاثة بنود في Items (+الرأس)');
+  const nz = a => a.filter(r => r.some(v => v !== '' && v !== null && v !== undefined)).length;
+  ok(nz(data.Reports) === 2 && nz(data.Items) === 4, 'كُتب صف في Reports وثلاثة بنود في Items (+الرأس)');
   ok(data.Reports[1].includes('موجه الابتدائي'), 'منشئ التقرير مسجّل باسم الدور');
   ok(data.Items.slice(1).every(r => !String(r.join()).includes('طالب')), 'ورقة Items لا تحوي اسم الطالب (الربط بالرقم الداخلي فقط)');
   await p.click('#logout'); await p.waitForSelector('#gu');

@@ -753,9 +753,11 @@ function selfTest() {
     // الدخول برمز
     ok(ids(ctxFor_('TEST_موجه م/ث')) === 'TEST-2', 'موجه المتوسط والثانوي يرى المتوسط (أهلي) فقط');
     ok(ids(ctxFor_('TEST_وكيل دبلوما')) === 'TEST-3', 'وكيل قسم الدبلوما يرى الدبلوما فقط');
-    throws(function () { api_login('TEST_موجه خاصة', ''); }, 'قسم التربية الخاصة بلا طلاب: رسالة قيد التهيئة');
+    var hasSp = tableC_('Students', 300).some(function (x) { return !/^TEST-/.test(trim_(x.id)) && truthy_(x.active) && norm_(DEPT_MAP, x.department) === 'special'; });
+    if (hasSp) { var lsp = api_login('TEST_موجه خاصة', ''); ok(!!lsp.token, 'قسم التربية الخاصة مهيّأ (فيه طلاب): الدخول متاح'); api_logout(lsp.token); }
+    else throws(function () { api_login('TEST_موجه خاصة', ''); }, 'قسم التربية الخاصة بلا طلاب: رسالة قيد التهيئة');
     var us = api_users(); function uf(n) { return us.filter(function (u) { return u.username === n; })[0]; }
-    ok(uf('TEST_موجه خاصة').ready === false && uf('TEST_موجه خاصة').dept === 'special' && uf('TEST_موجه م/ث').ready === true, 'api_users تعيد ready وdept');
+    ok(uf('TEST_موجه خاصة').ready === hasSp && uf('TEST_موجه خاصة').dept === 'special' && uf('TEST_موجه م/ث').ready === true, 'api_users تعيد ready وdept');
     var lg = api_login('TEST_موجه ابتدائي', '');
     ok(!!lg.token && lg.user.role === 'counselor', 'الموجه يدخل بلا رمز ويحصل على جلسة');
     ok(api_users().filter(function (u) { return u.username === 'TEST_مدير'; })[0].needsPin === true && api_users().filter(function (u) { return u.username === 'TEST_موجه ابتدائي'; })[0].needsPin === false, 'الرمز مطلوب للمدير فقط');
@@ -769,7 +771,7 @@ function selfTest() {
     var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'يحتاج إلى تعزيز التركيز أثناء الشرح.' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
     var sv = saveReport_(c, 'TEST-1', items);
     ok(!!sv.stats && !!sv.stats.stages.primary, 'الحفظ يعيد الإحصاءات (بلا استدعاء إضافي)');
-    var bt = api_boot(lg.token);
+    var lg2 = api_login('TEST_موجه ابتدائي', ''), bt = api_boot(lg2.token);
     ok(bt.user.role === 'counselor' && !!bt.user.period && bt.students.some(function (x) { return x.id === 'TEST-1' && x.status === 'DRAFT'; }) && !!bt.stats.stages.primary, 'api_boot يعيد المستخدم والطلاب والمكتبة والإحصاءات في استدعاء واحد، وحالة الحفظ تظهر رغم الذاكرة المؤقتة');
     ok(getReport_(c, 'TEST-1').items.length === 3 && getReport_(c, 'TEST-1').items.length === 3, 'قراءة بنود التقرير (من الذاكرة) صحيحة');
     saveReport_(c, 'TEST-1', items.slice(0, 2));
