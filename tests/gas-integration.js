@@ -177,6 +177,7 @@ const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجم
     await pp.click('[data-stu] >> nth=1').catch(() => {});
     await pp.waitForTimeout(500);
     ok(await pp.isVisible('.busy.on') && (await pp.textContent('.busy')).includes('فضلا الانتظار .. جاري العمل على قاعدة البيانات ..'), 'Pages: مربع الانتظار يظهر عند جلب بيانات طالب');
+  await pp.waitForTimeout(0);
   const tm1 = parseFloat(await pp.textContent('.busy .tm')); await pp.waitForTimeout(400); const tm2 = parseFloat(await pp.textContent('.busy .tm'));
   ok(tm1 > 0.3 && tm2 - tm1 > 0.25 && /^\d+\.\d\d ث$/.test((await pp.textContent('.busy .tm')).trim()), 'عدّاد الانتظار: ثوانٍ وجزء من الثانية يتزايد (' + tm1 + ' → ' + tm2 + ')');
     await pp.waitForTimeout(1800);
@@ -188,6 +189,15 @@ const st = __api.selfTest(); ok(st.some(l => l.includes('التطبيق الجم
   ok(await pp.isChecked('input[data-cat=strength] >> nth=1') && !(await pp.isVisible('.busy.on')), 'حفظ متفائل: العبارة تُحدَّد فوراً دون مربع انتظار حاجب رغم بطء الخادم');
   await pp.waitForTimeout(2600);
   ok((await pp.textContent('#msg')).includes('تم الحفظ'), 'الحفظ يكتمل في الخلفية ويظهر «تم الحفظ»');
+  // العدّاد يستمر عبر استدعاءات متتالية ولا يُعاد من الصفر
+  slowMs = 700;
+  await pp.waitForTimeout(1200);
+  await pp.evaluate(() => { window.__seq = (async () => { await B.me(); await B.stats(); await B.me(); await B.stats(); })(); });
+  const samples = [];
+  for (let i = 0; i < 12; i++) { await pp.waitForTimeout(250); samples.push(await pp.evaluate(() => { const m = document.querySelector('.busy.on .tm'); return m ? parseFloat(m.textContent) : null; })); }
+  await pp.evaluate(() => window.__seq);
+  const vis = samples.filter(x => x !== null);
+  ok(vis.length >= 8 && vis.every((x, i) => i === 0 || x >= vis[i - 1]) && Math.max(...vis) > 2.3, 'عدّاد الانتظار يقيس العملية كلها عبر استدعاءات متتالية (لا يُعاد من الصفر): ' + vis.join(','));
   slowMs = 0;
   const pc = await pp.$$eval('[data-cls]', e => e.map(x => x.textContent));
   ok(pc.length > 0 && pc.every(c => /الابتدائي/.test(c)), 'Pages: بعد الدخول تُقرأ شعب الابتدائي من القاعدة');

@@ -294,14 +294,15 @@ const remoteCall=async(fn,...a)=>{
  let j;try{j=await r.json();}catch(e){throw new Error('استجابة غير صالحة من الخادم.');}
  if(!j.ok)throw new Error(j.error||'خطأ في الخادم.');return j.value;};
 const gasCall=(fn,...a)=>new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(new Error((e&&e.message)||e)))[fn](...a));
-const Busy=(()=>{let n=0,t=null,since=0,el=null,t0=0,iv=null;
+const Busy=(()=>{let n=0,t=null,since=0,el=null,t0=0,iv=null,ht=null,on=false,lastEnd=0,fz=0;
  const mk=()=>{if(el)return el;el=document.createElement('div');el.className='busy';el.setAttribute('role','alertdialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','فضلا الانتظار');
   el.innerHTML='<div class="bx"><div>فضلا الانتظار .. جاري العمل على قاعدة البيانات ..</div><div class="ind" role="progressbar" aria-busy="true"><i></i></div><div class="tm" role="timer" dir="ltr" aria-label="زمن الانتظار بالثواني">0.00 ث</div></div>';document.body.appendChild(el);return el;};
- const tick=()=>{const m=el&&el.querySelector('.tm');if(m)m.textContent=((performance.now()-t0)/1000).toFixed(2)+' ث';};
- const show=()=>{since=Date.now();mk().classList.add('on');tick();clearInterval(iv);iv=setInterval(tick,50);document.body.setAttribute('aria-busy','true');};
- const hide=()=>{clearInterval(iv);if(el)el.classList.remove('on');document.body.removeAttribute('aria-busy');};
- const start=()=>{if(++n===1){t0=performance.now();t=setTimeout(show,150);}};
- const end=()=>{if(--n>0)return;n=0;clearTimeout(t);if(el&&el.classList.contains('on')){setTimeout(()=>{if(n===0)hide();},Math.max(0,400-(Date.now()-since)));}};
+ const tick=()=>{const m=el&&el.querySelector('.tm');if(m)m.textContent=(((fz||performance.now())-t0)/1000).toFixed(2)+' ث';};
+ const show=()=>{on=true;since=Date.now();mk().classList.add('on');tick();clearInterval(iv);iv=setInterval(tick,50);document.body.setAttribute('aria-busy','true');};
+ const hide=()=>{on=false;clearInterval(iv);if(el)el.classList.remove('on');document.body.removeAttribute('aria-busy');};
+ // العدّاد يقيس العملية كلها: إن بدأ استدعاء جديد خلال فترة سماح قصيرة بعد انتهاء السابق (عمليات متتالية: دخول ← تحميل ← تقرير) يستمر العدّ والمربع ولا يُعاد من الصفر
+ const start=()=>{clearTimeout(ht);ht=null;fz=0;if(++n===1&&!on){const now=performance.now();if(!(now-lastEnd<700))t0=now;clearTimeout(t);t=setTimeout(show,Math.max(0,150-(now-t0)));}};
+ const end=()=>{if(--n>0)return;n=0;lastEnd=performance.now();fz=lastEnd;if(on){tick();ht=setTimeout(()=>{if(n===0)hide();},Math.max(600,400-(Date.now()-since)));}else{clearTimeout(t);t=null;}};
  return{run:async f=>{start();try{return await f();}finally{end();}},active:()=>n>0};})();
 const mkBackend=call0=>{const call=(fn,...a)=>Busy.run(()=>call0(fn,...a)); // الدخول بحساب دور + رمز، وجلسة token (داخل Apps Script أو عن بعد من GitHub Pages)
  let token=null;try{token=sessionStorage.getItem('dfa_tok');}catch(e){}
