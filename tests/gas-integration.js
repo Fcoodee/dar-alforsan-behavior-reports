@@ -98,6 +98,10 @@ const st = __api.selfTest(); ok(Array.isArray(st) && st.length > 20 && !st.some(
   ok(opt.includes('Participates actively.') && !opt.includes('يشارك بفاعلية') && opt.includes('logo_diploma.png'), 'طالب الدبلوما: خيارات العبارات الإنجليزية تظهر (حتى لو لم يعد الخادم lang) وشعار القسم في الترويسة');
   ok(shAr.includes('تقرير الفترة الأولى - الفصل الدراسي الأول') && shAr.includes('بتاريخ:') && shAr.includes('9 جمادى الآخرة 1448') && shAr.includes('19 نوفمبر 2026') && shAr.includes('يسعدنا أن نتوجه إليكم') && !shAr.includes('في ختام رحلة'), 'عنوان التقرير: «تقرير الفترة الأولى - الفصل الدراسي الأول» + بتاريخ (متغير) والمقدمة تبدأ بـ«يسعدنا أن نتوجه إليكم»');
   ok(shEn.includes('Period 1 Report - First Semester') && shEn.includes('Date: 19 November 2026 · 9 Jumada al-Thani 1448 AH') && !/BC|June/.test(shEn) && shEn.includes('We are pleased to extend'), 'تقرير الدبلوما: العنوان والتاريخ والمقدمة بالإنجليزية');
+  ok((await p.$('form.add')) === null && (await p.$('input[data-draft]')) === null, 'v11.0: لا حقول لإضافة عبارات إضافية');
+  ok((await p.textContent('#ver')).includes('v11.0'), 'رقم الإصدار v11.0 ظاهر في الشريط السفلي');
+  const cust = await p.evaluate(async () => { try { await B.saveReport(S.cur, [{ category: 'strength', text: 'عبارة من خارج المكتبة' }]); return 'accepted'; } catch (e) { return e.message; } });
+  ok(cust.includes('غير متاحة'), 'الخادم يرفض أي عبارة خارج المكتبة: ' + cust);
   ok(shSp.includes('logo_special.png') && shSp.includes('شريكنا'), 'تقرير التربية الخاصة: عربي مع شعار القسم بجانب شعار المدرسة');
   ok((await p.textContent('.hero')).includes('موجه الابتدائي'), 'الموجه يدخل بحساب الدور ورمزه');
   const cls = await p.$$eval('[data-cls]', e => e.map(x => x.textContent));

@@ -210,6 +210,7 @@ body{padding-bottom:52px}
 <script>
 'use strict';
 /* ═════════ قواعد العمل (مطابقة لـ apps-script/Code.gs) ═════════ */
+const VERSION='v11.0';
 const MAX={strength:4,improve:4,recommend:3}, MAXC=120;
 const CATS=['strength','improve','recommend'];
 const STAGE_AR={primary:'الابتدائي',middle:'المتوسط',secondary:'الثانوي',all:'كل المراحل'};
@@ -248,7 +249,7 @@ const Mock=(()=>{
    if(!['counselor','deputy','admin'].includes(ctx.role))throw new Error('لا صلاحية للتعديل.');
    const lib=new Set(DEMO.library.map(l=>l.text)),n={strength:0,improve:0,recommend:0};
    const clean=items.map((it,i)=>{const t=String(it.text||'').trim();if(!t)throw new Error('عبارة فارغة.');if(!CATS.includes(it.category))throw new Error('فئة غير صالحة.');
-    const source=lib.has(t)?'library':'custom';if(source==='custom'&&t.length>MAXC)throw new Error('العبارة المخصصة أطول من '+MAXC+' حرفاً.');
+    const source=lib.has(t)?'library':'custom';if(source==='custom'&&!((db.reports[id]||{}).items||[]).some(x=>x.text===t))throw new Error('العبارات الإضافية غير متاحة؛ اختر من مكتبة العبارات.');if(false)throw new Error('العبارة المخصصة أطول من '+MAXC+' حرفاً.');
     if(++n[it.category]>MAX[it.category])throw new Error('تجاوز الحد الأقصى للفئة.');return{category:it.category,text:t,source};});
    db.reports[id]={status:'DRAFT',items:clean,by:ctx.email,updated:new Date().toISOString()};log('SAVE','R-'+id,clean.length+' بنود');
    return wait({id:'R-'+id,status:'DRAFT'});}catch(e){return fail(e)}},
@@ -296,12 +297,13 @@ const Remote=API_URL?mkBackend(remoteCall):null;
 const B=(typeof google!=='undefined'&&google.script)?Gas:(Remote&&!/[?&]demo=1/.test(location.search))?Remote:Mock;
 
 /* ═════════ الحالة والواجهة ═════════ */
-const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',drafts:{strength:'',improve:'',recommend:''},printScope:'student',stats:null,filter:'all'};
+const S={user:null,students:[],lib:[],cls:null,cur:null,items:[],status:'NONE',pdfUrl:'',q:'',msg:'',msgKind:'',reason:'',printScope:'student',stats:null,filter:'all'};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const L=c=>'<bdi>'+esc(c)+'</bdi>';
 const fmtDate=(loc,o)=>{try{return new Intl.DateTimeFormat(loc,Object.assign({timeZone:'Asia/Riyadh'},o)).format(new Date());}catch(e){return '';}};
-function clockHtml(){return ''+(h=>h?'<span>'+h+'</span>':'')(fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))+(g=>g?'<span>الموافق '+g+'م</span>':'')(fmtDate('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'}))+'<span style="font-weight:800">'+fmtDate('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',hour12:true})+'</span>';}
+function clockHtml(){return ''+(h=>h?'<span>'+h+'</span>':'')(fmtDate('ar-SA-u-ca-islamic-umalqura-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))+(g=>g?'<span>الموافق '+g+'م</span>':'')(fmtDate('ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'}))+'<span style="font-weight:800">'+fmtDate('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',hour12:true})+'</span><span dir="ltr" style="opacity:.8" id="ver">'+VERSION+verNote()+'</span>';}
+function verNote(){const u=typeof S!=='undefined'&&S.user;return u&&u.role==='admin'&&!B.isMock?(u.version?(u.version===VERSION?'':' · الخادم '+u.version):' · الخادم قديم'):'';}
 setInterval(()=>{const c=document.getElementById('clk');if(c)c.innerHTML=clockHtml();},20000);
 
 /* ───── المتابعة وفاعلية العمل ───── */
@@ -525,11 +527,6 @@ async function toggle(cat,t){
  else{if(S.items.filter(i=>i.category===cat).length>=MAX[cat])return;S.items=S.items.concat([{category:cat,text:t,source:'library'}]);}
  await persist();
 }
-async function addCustom(cat){
- const t=(S.drafts[cat]||'').trim();if(!t||!editable())return;
- if(has(cat,t)||S.items.filter(i=>i.category===cat).length>=MAX[cat]){say('لا يمكن إضافة المزيد في هذا القسم.','err');return;}
- S.items=S.items.concat([{category:cat,text:t,source:'custom'}]);S.drafts[cat]='';await persist();
-}
 async function go(to){
  await saveChain;
  const needReason=to==='DRAFT';
@@ -628,7 +625,7 @@ function render(){
   (editable()?'':'<div class="sub">'+(['counselor','deputy','admin'].includes(u.role)?'التقرير مقفل بحالته الحالية.':'دورك لا يحرّر المحتوى؛ يمكنك الاعتماد أو الإعادة بحسب الحالة.')+'</div>')+
   [['strength','fs-s','النقاط الإيجابية ونقاط القوة'],['improve','fs-i','نقاط تحتاج إلى دعم وتحسين'],['recommend','fs-r','التوصيات']].map(([c,k,t])=>
    '<fieldset class="'+k+'"><legend>'+t+' ('+S.items.filter(i=>i.category===c).length+'/'+MAX[c]+')</legend><div class="opts">'+optsHtml(c)+'</div>'+
-   (editable()?'<form class="add" data-add="'+c+'"><input data-draft="'+c+'" value="'+esc(S.drafts[c])+'" placeholder="عبارة إضافية (اختياري)" aria-label="عبارة إضافية" maxlength="'+MAXC+'"><button class="btn" type="submit">إضافة</button></form>':'')+'</fieldset>').join('')+
+   '</fieldset>').join('')+
   actionsHtml()+'<div id="msg" role="status" class="'+S.msgKind+'">'+esc(S.msg)+'</div>':'<div class="sub">اختر طالباً.</div>')+'</section>'+
  '<section class="c3"><div class="card" style="width:100%;max-width:640px"><div class="row"><button class="btn pri" id="print">طباعة / حفظ PDF</button>'+
   '<label class="sub">النطاق <select id="scope" style="min-height:44px;border:1px solid #9fb0bd;border-radius:8px;padding:0 8px"><option value="student"'+(S.printScope==='student'?' selected':'')+'>الطالب الحالي</option><option value="class"'+(S.printScope==='class'?' selected':'')+'>فصل '+(S.cls||'')+' (المعتمد/المنشور)</option></select></label>'+
@@ -646,8 +643,6 @@ function bind(){
  app.querySelectorAll('[data-cls]').forEach(b=>b.onclick=()=>{S.q='';S.filter='all';S.cls=b.dataset.cls;const f=S.students.find(s=>s.class===S.cls);f?pick(f.id):render();});
  app.querySelectorAll('[data-stu]').forEach(b=>b.onclick=()=>pick(b.dataset.stu));
  app.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>toggle(c.dataset.cat,c.dataset.t));
- app.querySelectorAll('form[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();addCustom(f.dataset.add);});
- app.querySelectorAll('input[data-draft]').forEach(i=>i.oninput=()=>{S.drafts[i.dataset.draft]=i.value;});
  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  const r=$('#reason');if(r)r.oninput=()=>{S.reason=r.value;};
  const q=$('#q');if(q)q.oninput=()=>{S.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};

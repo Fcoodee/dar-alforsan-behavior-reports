@@ -12,6 +12,7 @@
  * لا يحتوي هذا الملف أي بيانات طلاب أو رموز دخول. البيانات تُدخل في الشيت فقط.
  */
 
+var VERSION = 'v11.0';
 var YEAR = '1448-1449';
 // الفترات: دورتان في كل فصل دراسي. الفترة الحالية تُضبط من ورقة Config (المفتاح «الفترة الحالية»)؛ الافتراضي S1P1.
 // issue = تاريخ إصدار التقرير الافتراضي (ISO) وفق التقويم الرسمي لوزارة التعليم 1448: S1P1 آخر يوم قبل إجازة الخريف (الخميس 19-11-2026)، S1P2 آخر يوم دراسة قبل إجازة منتصف العام (الخميس 7-1-2027).
@@ -391,7 +392,7 @@ function stageOf_(s) { return norm_(STAGE_MAP, s.stage); }
 
 /* ───────────── واجهة برمجية (تُستدعى من الصفحة؛ الوسيط الأول دائماً token) ───────────── */
 
-function api_me(token) { var c = ctx_(token); return { name: c.name, role: c.role, stage: c.stages.join('+'), department: c.departments.join('+'), period: periodInfo_() }; }
+function api_me(token) { var c = ctx_(token); return { name: c.name, role: c.role, stage: c.stages.join('+'), department: c.departments.join('+'), period: periodInfo_(), version: VERSION }; }
 
 function api_students(token) { return listStudents_(ctx_(token)); }
 
@@ -438,7 +439,7 @@ function api_library(token) { return library_(ctx_(token)); }
 /** كل ما تحتاجه الواجهة بعد الدخول في استدعاء واحد (بدل me + students + library + stats). */
 function api_boot(token) {
   var ctx = ctx_(token), studs = visibleStudents_(ctx), st = statusMap_();
-  return { user: { name: ctx.name, role: ctx.role, stage: ctx.stages.join('+'), department: ctx.departments.join('+'), period: periodInfo_() },
+  return { user: { name: ctx.name, role: ctx.role, stage: ctx.stages.join('+'), department: ctx.departments.join('+'), period: periodInfo_(), version: VERSION },
            students: listStudents_(ctx, studs, st), library: library_(ctx), stats: stats_(ctx, studs, st) };
 }
 
@@ -480,14 +481,18 @@ function saveReport_(ctx, studentId, items) {
     if (['counselor', 'deputy', 'admin'].indexOf(ctx.role) < 0) throw new Error('لا صلاحية للتعديل.');
 
     var counts = { strength: 0, improve: 0, recommend: 0 };
-    var libTexts = {};
+    var libTexts = {}, prevTexts = null;
     tableC_('Library', 600).forEach(function (l) { libTexts[trim_(l.text)] = true; });
     var clean = items.map(function (it, i) {
       if (CATS.indexOf(it.category) < 0) throw new Error('فئة غير صالحة.');
       var t = trim_(it.text);
       if (!t) throw new Error('عبارة فارغة.');
       var source = libTexts[t] ? 'library' : 'custom';
-      if (source === 'custom' && t.length > MAX_CUSTOM_LEN) throw new Error('العبارة المخصصة أطول من ' + MAX_CUSTOM_LEN + ' حرفاً.');
+      // v11.0: لا عبارات إضافية؛ الاختيار من المكتبة فقط (يُبقى فقط ما حُفظ سابقاً في التقرير نفسه)
+      if (source === 'custom') {
+        if (!prevTexts) { prevTexts = {}; if (rep) (cget_('itm_' + rep.id) || table_('Items').filter(function (x) { return x.reportId === rep.id; })).forEach(function (x) { prevTexts[trim_(x.text)] = true; }); }
+        if (!prevTexts[t]) throw new Error('العبارات الإضافية غير متاحة؛ اختر من مكتبة العبارات.');
+      }
       counts[it.category]++;
       if (counts[it.category] > MAX[it.category]) throw new Error('تجاوز الحد الأقصى للفئة.');
       return { category: it.category, text: t, source: source, order: i + 1 };
@@ -674,7 +679,7 @@ function selfTest() {
     throws(function () { api_students('رمز-جلسة-وهمي'); }, 'جلسة غير صالحة مرفوضة');
     api_logout(lg.token);
     throws(function () { api_me(lg.token); }, 'الخروج يُنهي الجلسة');
-    var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'عبارة مخصصة للاختبار' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
+    var items = [{ category: 'strength', text: 'يشارك بفاعلية أثناء الحصة الدراسية.' }, { category: 'improve', text: 'يحتاج إلى تعزيز التركيز أثناء الشرح.' }, { category: 'recommend', text: 'تنمية مهارات التواصل والحوار الإيجابي' }];
     var sv = saveReport_(c, 'TEST-1', items);
     ok(!!sv.stats && !!sv.stats.stages.primary, 'الحفظ يعيد الإحصاءات (بلا استدعاء إضافي)');
     var bt = api_boot(lg.token);
@@ -686,6 +691,7 @@ function selfTest() {
     throws(function () { saveReport_(c, 'TEST-1', items.concat([1, 2, 3, 4, 5].map(function () { return { category: 'strength', text: 'x' }; }))); }, 'تجاوز حد النقاط مرفوض');
     var rp = table_('Reports').filter(function (r) { return r.studentId === 'TEST-1'; })[0];
     ok(!!rp && trim_(rp.period) === period_(), 'التقرير يُخزَّن بفترته (' + (rp ? trim_(rp.period) : '-') + ')');
+    throws(function () { saveReport_(c, 'TEST-1', [{ category: 'improve', text: 'نص خارج مكتبة العبارات' }]); }, 'العبارة الإضافية (خارج المكتبة) مرفوضة في v11.0');
     transition_(c, 'TEST-1', 'SUBMITTED');
     var stC = stats_(c), stD = stats_(d), stP = stats_(p);
     ok(Object.keys(stC.stages).join() === 'primary' && Object.keys(stD.stages).join() === 'middle', 'الإحصاءات مقيّدة بمرحلة المستخدم');
